@@ -1,37 +1,22 @@
+use rumqttc::{ AsyncClient, MqttOptions, EventLoop, QoS };
+
+use std::time::Duration;
+
 use crate::Result;
 
 pub struct Coordinator {
-    connection: mqtt::AsyncClient
+    client: AsyncClient,
 }
 
 impl Coordinator {
-    pub async fn new(username: impl Into<String>, password: impl Into<String>) -> Result<Self> {
-        let connection = mqtt::CreateOptionsBuilder::new()
-            .server_uri("tcp://localhost:1883")
-            .client_id("coordinator")
-            .mqtt_version(5)
-            .create_client()?;
+    pub async fn new(username: impl Into<String>, password: impl Into<String>) -> Result<(Self, EventLoop)> {
+        let mut options = MqttOptions::new("coordinator", "localhost", 1883);
+        options.set_keep_alive(Duration::from_secs(5));
+        // options.set_credentials(username, password);
 
-        let response = connection.connect(mqtt::ConnectOptionsBuilder::new()
-            .user_name(username)
-            .password(password)
-            .clean_start(true)
-            .finalize()
-        ).await?;
+        let (client, event_loop) = AsyncClient::new(options, 100);
+        client.subscribe("#", QoS::AtMostOnce).await.unwrap();
 
-        if let Some(response) = response.connect_response() {
-            info!(
-                "Connected to broker at {}. MQTT version {}. {}",
-                response.server_uri,
-                response.mqtt_version,
-                if response.session_present { "Session already present." } else { "" }
-            );
-        }
-
-        Ok(Self {
-            connection
-        })
+        Ok((Self { client }, event_loop))
     }
-
-
 }

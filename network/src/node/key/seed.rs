@@ -1,17 +1,29 @@
 use super::{ Mnemonic, Error };
 
-const SEED_NUM_BYTES: usize = 32;
-const SEED_NUM_BITS: usize = SEED_NUM_BYTES * 8;
-const CHECKSUM_NUM_BITS: usize = SEED_NUM_BITS / 32;
+use pluto_utils::bits::{ BitsIter, IterBits };
 
+pub const SEED_NUM_BYTES: usize = 32;
+pub const SEED_NUM_BITS: usize = SEED_NUM_BYTES * 8;
+pub const CHECKSUM_NUM_BITS: usize = SEED_NUM_BITS / 32;
 
-#[derive(Debug, Eq, PartialEq)]
+pub type Entropy = [u8; SEED_NUM_BYTES];
+
+/// Seed used to initialise a PRNG for key generation.
+///
+/// Convert to and from a [`Mnemonic`] for easy storage.
+#[derive(Eq, PartialEq, Clone)]
 pub struct Seed {
-    entropy: [u8; SEED_NUM_BYTES],
+    /// Random bytes acting as an entropy.
+    entropy: Entropy,
+    /// Checksum for verifying whether a passphrase is correct.
     checksum: u8
 }
 
 impl Seed {
+    /// Converts a [`Mnemonic`] to a [`Seed`].
+    ///
+    /// Returns [`InvalidChecksum`](Error::InvalidChecksum) if
+    /// the checksum doesn't match.
     pub fn from_mnemonic(mnemonic: Mnemonic) -> Result<Seed, Error> {
         let indexes = mnemonic.to_indexes();
 
@@ -37,7 +49,8 @@ impl Seed {
         Ok(seed)
     }
 
-    pub fn to_mnemonic(&self) -> Result<Mnemonic, Error> {
+    /// Converts a [`Seed`] to [`Mnemonic`].
+    pub fn to_mnemonic(&self) -> Mnemonic {
         let bits: Vec<u8> = self.entropy.iter_bits()
             .chain(self.checksum.iter_bits())
             .collect();
@@ -53,9 +66,15 @@ impl Seed {
                 ).1
         }).collect();
 
-        Mnemonic::from_indexes(indexes.try_into().unwrap())
+        // SAFETY: There is no way to obtain invalid indexes
+        // from any entropy. Hence, we can unwrap.
+        Mnemonic::from_indexes(indexes.try_into().unwrap()).unwrap()
     }
 
+    /// Verifies whether the checksum is valid.
+    ///
+    /// Returns [`InvalidChecksum`](Error::InvalidChecksum)
+    /// error if it doesn't match.
     pub fn verify_checksum(&self) -> Result<(), Error> {
         let hash = ring::digest::digest(&ring::digest::SHA256, &self.entropy);
 
@@ -64,7 +83,8 @@ impl Seed {
         } else { Ok(()) }
     }
 
-    pub fn from_entropy(entropy: [u8; SEED_NUM_BYTES]) -> Seed {
+    /// Converts random bytes into a [`Seed`], and calculates its checksum.
+    pub fn from_entropy(entropy: Entropy) -> Seed {
         let hash = ring::digest::digest(&ring::digest::SHA256, &entropy);
         assert_eq!(CHECKSUM_NUM_BITS, 8, "checksum sizes other than 8 bits are currently not supported");
 
@@ -73,184 +93,37 @@ impl Seed {
             checksum: hash.as_ref()[0]
         }
     }
-}
 
-pub struct BitsIter<'a> {
-    data: std::borrow::Cow<'a, [u8]>,
-    current_index: usize,
-    bits_count: usize,
-    index_multiplier: usize,
-}
-
-impl<'a> BitsIter<'a> {
-    fn from_slice(data: std::borrow::Cow<'a, [u8]>, bits_count: usize) -> Self {
-        // Ceil bits_count / 8
-        let index_multiplier = bits_count.div_euclid(8) + if bits_count.rem_euclid(8) == 0 { 0 } else { 1 };
-
-        Self {
-            data,
-            current_index: 0,
-            bits_count,
-            index_multiplier
-        }
+    /// Returns seed entropy.
+    pub fn entropy(&self) -> &Entropy {
+        &self.entropy
     }
 }
 
-impl<'a> Iterator for BitsIter<'a> {
-    type Item = u8;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let index = self.current_index / self.bits_count;
-        let bit = self.current_index % self.bits_count;
-
-        let byte = self.data.get(index * self.index_multiplier + bit / 8)?;
-
-        let bit_mask = bit % 8;
-
-        let bit = byte & ((1 << bit_mask) as u8) > 0;
-        self.current_index += 1;
-        Some(bit as u8)
+impl std::fmt::Debug for Seed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Seed")
+            // Output entropy as a string of 2-digit hex numbers.
+            .field("entropy", &self.entropy.iter().copied().fold(String::new(), |mut s, b| {
+                s.push_str(&format!("{b:02x}"));
+                s
+            }))
+            // Output checksum as a 2-digit hex number.
+            .field("checksum", &format!("{:02x}", self.checksum))
+            .finish()
     }
 }
 
-pub trait IterBits {
-    fn iter_bits(&self) -> BitsIter;
-    fn iter_n_bits(&self, n: usize) -> BitsIter;
-}
+impl TryFrom<Mnemonic> for Seed {
+    type Error = Error;
 
-impl IterBits for Vec<u8> {
-    fn iter_bits(&self) -> BitsIter {
-        self.iter_n_bits(8)
-    }
-
-    fn iter_n_bits(&self, n: usize) -> BitsIter {
-        BitsIter::from_slice(self[..].into(), n)
+    fn try_from(m: Mnemonic) -> Result<Self, Self::Error> {
+        Self::from_mnemonic(m)
     }
 }
 
-impl IterBits for [u8] {
-    fn iter_bits(&self) -> BitsIter {
-        self.iter_n_bits(8)
+impl Into<Mnemonic> for Seed {
+    fn into(self) -> Mnemonic {
+        self.to_mnemonic()
     }
-
-    fn iter_n_bits(&self, n: usize) -> BitsIter {
-        BitsIter::from_slice(self.into(), n)
-    }
-}
-
-impl<const N: usize> IterBits for [u8; N] {
-    fn iter_bits(&self) -> BitsIter {
-        self.iter_n_bits(8)
-    }
-
-    fn iter_n_bits(&self, n: usize) -> BitsIter {
-        BitsIter::from_slice(self[..].into(), n)
-    }
-}
-
-impl IterBits for u8 {
-    fn iter_bits(&self) -> BitsIter {
-        self.iter_n_bits(8)
-    }
-
-    fn iter_n_bits(&self, n: usize) -> BitsIter {
-        BitsIter::from_slice(vec![*self].into(), n)
-    }
-}
-
-macro_rules! __impl_iter_bits {
-    ($($t:ty => $n:expr);+) => {
-        $(
-            impl IterBits for Vec<$t> {
-                fn iter_bits(&self) -> BitsIter {
-                    self.iter_n_bits($n)
-                }
-
-                fn iter_n_bits(&self, n: usize) -> BitsIter {
-                    let v: Vec<u8> = self.iter().copied().map(|a| a.to_le_bytes().into_iter())
-                        .flatten().collect();
-                    BitsIter::from_slice(v.into(), n)
-                }
-            }
-
-            impl IterBits for [$t] {
-                fn iter_bits(&self) -> BitsIter {
-                    self.iter_n_bits($n)
-                }
-
-                fn iter_n_bits(&self, n: usize) -> BitsIter {
-                    let v: Vec<u8> = self.iter().copied().map(|a| a.to_le_bytes().into_iter())
-                        .flatten().collect();
-                    BitsIter::from_slice(v.into(), n)
-                }
-            }
-
-            impl<const N: usize> IterBits for [$t; N] {
-                fn iter_bits(&self) -> BitsIter {
-                    self.iter_n_bits($n)
-                }
-
-                fn iter_n_bits(&self, n: usize) -> BitsIter {
-                    let v: Vec<u8> = self.iter().copied().map(|a| a.to_le_bytes().into_iter())
-                        .flatten().collect();
-                    BitsIter::from_slice(v.into(), n)
-                }
-            }
-
-            impl IterBits for $t {
-                fn iter_bits(&self) -> BitsIter {
-                    self.iter_n_bits($n)
-                }
-
-                fn iter_n_bits(&self, n: usize) -> BitsIter {
-                    BitsIter::from_slice(self.to_le_bytes().to_vec().into(), n)
-                }
-            }
-        )+
-    }
-}
-
-__impl_iter_bits!(
-    u16 => 16;
-    u32 => 32;
-    u64 => 64
-);
-
-#[test]
-fn test_iter_n_bits() {
-    let vec: Vec<u16> = vec![0b00000_101_0111_0011, 0b00000_011_0101_1000];
-    let mut iter = vec.iter_n_bits(11);
-
-    let mut counter = 0;
-
-    macro_rules! assert_values {
-        ($($b:expr),+) => {
-            $(
-                assert_eq!(iter.next(), Some($b), "i = {}", counter);
-                counter += 1;
-            )+
-        }
-    }
-
-    assert_values!(
-        1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1,
-        0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0
-    );
-
-    assert_eq!(iter.next(), None);
-
-    let bits: Vec<u8> = vec.iter_n_bits(11).collect();
-
-    let vec2: Vec<u16> = bits.chunks(11).map(|bits| {
-        let bits: [u8; 11] = bits.try_into().unwrap();
-        let bits = bits.map(|b| b as u16);
-
-        bits.into_iter()
-            .fold(
-                (0u16, 0u16),
-                |(count, value), bit| (count + 1, value | (bit << count))
-            ).1
-    }).collect();
-
-    assert_eq!(vec, vec2);
 }

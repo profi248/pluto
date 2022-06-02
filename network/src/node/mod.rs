@@ -1,3 +1,7 @@
+use rumqttc::{ AsyncClient, EventLoop, MqttOptions, QoS };
+
+use std::time::Duration;
+
 use crate::{
     Result, topics::{ Topic, CoordinatorTopic },
 };
@@ -5,42 +9,27 @@ use crate::{
 pub mod key;
 
 pub struct Node {
-    connection: mqtt::AsyncClient
+    client: AsyncClient
 }
 
 impl Node {
-    pub async fn new(server: impl Into<String>) -> Result<Self> {
-        let connection = mqtt::CreateOptionsBuilder::new()
-            .server_uri(server)
-            .client_id("")
-            .mqtt_version(5)
-            .create_client()?;
+    pub async fn new(host: impl Into<String>, port: u16) -> Result<(Self, EventLoop)> {
+        let mut options = MqttOptions::new("a", host, port);
+        options.set_keep_alive(Duration::from_secs(60));
 
-        trace!("step 1");
+        let (client, event_loop) = AsyncClient::new(options, 100);
 
-        let response = connection.connect(None).await?;
-
-        if let Some(response) = response.connect_response() {
-            info!(
-                "Connected to broker at {}. MQTT version {}. {}",
-                response.server_uri,
-                response.mqtt_version,
-                if response.session_present { "Session already present." } else { "" }
-            );
-        }
-
-        Ok(Self {
-            connection
-        })
+        Ok((Self { client }, event_loop))
     }
 
     pub async fn register_to_network(&self, keys: &key::Keys) -> Result<()> {
-        self.connection
-            .publish(mqtt::Message::new(
+        self.client
+            .publish(
                 CoordinatorTopic::RegisterNode,
-                "fsdfdf",
-                0
-            )).await?;
+                QoS::ExactlyOnce,
+                false,
+                "lol"
+            ).await.unwrap();
 
         Ok(())
     }
