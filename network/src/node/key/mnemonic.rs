@@ -1,5 +1,3 @@
-use crate::node::key::Error::InvalidIndex;
-
 // const WORDLIST_EN: &[&'static str] = pluto_macros::wordlist!("network/src/node/key/wordlists/english.txt");
 lazy_static::lazy_static!{
     static ref WORDLIST_EN: Vec<&'static str> = {
@@ -19,7 +17,7 @@ pub const PASSPHRASE_LENGTH: usize = 24;
 pub const WORDLIST_LENGTH: u16 = 2048;
 
 /// A 24 word mnemonic which represents the initial entropy used
-/// to [seed](Seed) a PRNG for generating keys.
+/// to [seed](super::Seed) a PRNG for generating keys.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Mnemonic {
     words: [String; PASSPHRASE_LENGTH]
@@ -63,7 +61,7 @@ impl Mnemonic {
         let mut words: Vec<String> = Vec::with_capacity(PASSPHRASE_LENGTH);
 
         for index in indexes.into_iter() {
-            if index >= WORDLIST_LENGTH { return Err(InvalidIndex(index))}
+            if index >= WORDLIST_LENGTH { return Err(Error::InvalidIndex(index))}
             words.push(WORDLIST_EN[index as usize].to_owned());
         }
 
