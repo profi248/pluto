@@ -1,0 +1,18 @@
+# coordinator development docker-compose file
+version: "3.9"
+services:
+  coordinator:
+    build: .
+  postgres:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: postgres
+  mosquitto:
+    image: eclipse-mosquitto
+    ports:
+      - '1883:1883'
+      - '8883:8883'
+    volumes:
+      - './mosquitto_configs:/mosquitto/config'
+    restart: always
