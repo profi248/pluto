@@ -9,7 +9,6 @@ edition = "2021"
 pluto-network = { path = "../network" }
 
 # Database
-sea-orm = "0.8.0"
 
 # Async
 tokio = { version = "1.18.2", features = [ "rt-multi-thread", "macros", "sync", "signal" ] }
