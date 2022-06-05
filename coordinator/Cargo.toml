@@ -11,6 +11,7 @@ pluto-network = { path = "../network" }
 # Database
 diesel = { version = "1.4.8", features = [ "postgres", "chrono" ] }
 deadpool-diesel = { version = "0.3.1", features = [ "postgres" ] }
+diesel_migrations = "1.4.0"
 
 # Async
 tokio = { version = "1.18.2", features = [ "rt-multi-thread", "macros", "sync", "signal" ] }

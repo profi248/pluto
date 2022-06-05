@@ -3,11 +3,16 @@ version: "3.9"
 services:
   coordinator:
     build: .
+    depends_on:
+      - postgres
+      - mosquitto
   postgres:
     image: postgres
     restart: always
     environment:
+      POSTGRES_USERNAME: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pluto-coordinator
   mosquitto:
     image: eclipse-mosquitto
     ports:

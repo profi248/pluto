@@ -4,10 +4,12 @@ FROM lukemathwalker/cargo-chef:latest-rust-1.61.0 AS chef
 WORKDIR app
 
 FROM chef AS planner
+LABEL stage=planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
+LABEL stage=builder
 COPY --from=planner /app/recipe.json recipe.json
 # Build dependencies - this is the caching Docker layer!
 RUN cargo chef cook --release --recipe-path recipe.json

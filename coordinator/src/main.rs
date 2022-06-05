@@ -3,9 +3,12 @@ extern crate tracing;
 
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
 
 pub mod db;
 
+use std::time::Duration;
 use rumqttc::Event;
 
 use pluto_network::coordinator::Coordinator;
@@ -22,7 +25,19 @@ async fn main() {
     let database_url = std::env::var("DATABASE_URL").expect("No database url provided");
 
     let db = Database::new(database_url);
+
+    let mut retries = 0;
+    while db.check_connection().await.is_err() {
+        if retries == 3 {
+            panic!("Unable to connect to database.");
+        }
+        info!("Trying to connect to database...");
+        tokio::time::sleep(Duration::from_millis(5000)).await;
+        retries += 1;
+    }
     info!("Connected to the database.");
+
+    db.run_migrations().await.unwrap();
 
     let mosquitto_host = std::env::var("MOSQUITTO_HOST").expect("No Mosquitto host provided");
     let mosquitto_port: u16 = std::env::var("MOSQUITTO_PORT").expect("No Mosquitto port provided").parse().expect("Mosquitto port invalid");
@@ -35,13 +50,15 @@ async fn main() {
         mosquitto_password
     ).await.expect("Error creating coordinator");
 
+    let mut retries = 0;
     // Poll connection acknowledgement.
-    match event_loop.poll().await {
-        Ok(_) => {},
-        Err(e) => {
-            error!("{e:?}");
-            return;
+    while event_loop.poll().await.is_err() {
+        if retries == 3 {
+            panic!("Unable to connect to broker.");
         }
+        info!("Waiting for MQTT broker to start...");
+        tokio::time::sleep(Duration::from_millis(5000)).await;
+        retries += 1;
     }
 
     info!("Connected to MQTT broker.");
