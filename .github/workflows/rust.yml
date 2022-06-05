@@ -30,4 +30,4 @@ jobs:
     - name: Build
       run: cargo build --verbose --workspace --exclude pluto-coordinator
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose --workspace --exclude pluto-coordinator
