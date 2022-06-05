@@ -10,15 +10,24 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build_linux:
-    runs-on: ${{ matrix.os }}
-    name: Build and test on ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+  build_all_linux:
+    runs-on: ubuntu-latest
+    name: Build and test all on Linux
     steps:
     - uses: actions/checkout@v3
     - name: Build
       run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+  build_client:
+    runs-on: ${{ matrix.os }}
+    name: Build and test client on ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose --workspace --exclude pluto-coordinator
     - name: Run tests
       run: cargo test --verbose
