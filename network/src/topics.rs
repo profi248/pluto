@@ -1,49 +1,13 @@
-macro_rules! __impl_to_string {
-    (
-        $v:vis enum $t:ident {$(
-            $i:ident ($inner:ty)
-        ),+ $(,)?}
-    ) => {
-        $v enum $t {
-            $($i ($inner)),+
-        }
+use pluto_macros::define_topics;
 
-        impl From<$t> for String {
-            fn from(t: $t) -> Self {
-                use $t::*;
+use crate::protos::auth::AuthNodeInit;
 
-                (match t {
-                    $(
-                        $i(a) => a.into()
-                    ),+
-                })
-            }
-        }
-    };
-}
-
-__impl_to_string! {
-    pub enum Topic {
-        Coordinator(CoordinatorTopic),
-    }
-}
-
-
-pub enum CoordinatorTopic {
-    Root,
-    RegisterNode
-}
-
-// TODO: put these in a macro of some sort.
-
-impl From<CoordinatorTopic> for String {
-    fn from(t: CoordinatorTopic) -> Self {
-        use CoordinatorTopic::*;
-
-        (match t {
-            Root => "coordinator",
-            RegisterNode => "coordinator/register_node"
-        })
-        .into()
+define_topics! {
+    Coordinator {
+        #[message = AuthNodeInit]
+        Auth -> "coordinator/auth"
+    },
+    Node {
+        Auth -> "node/{id}/auth"
     }
 }
