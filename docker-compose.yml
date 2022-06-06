@@ -6,6 +6,7 @@ services:
     depends_on:
       - postgres
       - mosquitto
+    restart: always
   postgres:
     image: postgres
     restart: always

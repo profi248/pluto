@@ -1,4 +1,7 @@
 extern crate proc_macro;
+
+mod topics;
+
 use proc_macro::TokenStream;
 
 use syn::{ parse_macro_input, LitStr };
@@ -23,4 +26,11 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
             #(#words),*
         ]
     }).into()
+}
+
+#[proc_macro]
+pub fn define_topics(tokens: TokenStream) -> TokenStream {
+    let topics = parse_macro_input!(tokens as topics::RootTopic);
+
+    topics::expand_root(topics).into()
 }
