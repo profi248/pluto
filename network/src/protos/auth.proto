@@ -1,0 +1,36 @@
+syntax = "proto3";
+import "_status.proto";
+
+// Node authentication initialization
+message AuthNodeInit {
+  bytes pubkey = 1;
+}
+
+// Coordinator response with authentication challenge random string
+message AuthCoordinatorChallenge {
+  message Challenge {
+    bytes challenge = 1;
+  }
+
+  oneof challenge_error {
+    Error error = 1;
+    Challenge challenge = 2;
+  }
+}
+
+// Node response with signed challenge string
+message AuthNodeChallengeResponse {
+  bytes response = 1;
+}
+
+// Coordinator response with session token
+message AuthCoordinatorSessionToken {
+  message SessionToken {
+    bytes session_token = 1;
+  }
+
+  oneof challenge_error {
+    Error error = 1;
+    SessionToken session_token = 2;
+  }
+}

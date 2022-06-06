@@ -3,7 +3,6 @@ pub mod models;
 
 embed_migrations!();
 
-use std::io::Write;
 use deadpool_diesel::{
     Pool, Runtime, PoolError,
     postgres::{ Manager, InteractError }
@@ -87,6 +86,8 @@ impl Database {
 
         impl Drop for Logger {
             fn drop(&mut self) {
+                use std::io::Write;
+
                 self.flush().unwrap();
             }
         }

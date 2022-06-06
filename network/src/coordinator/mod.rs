@@ -17,7 +17,7 @@ impl Coordinator {
         options.set_credentials(username, password);
 
         let (client, event_loop) = AsyncClient::new(options, 100);
-        client.subscribe("#", QoS::AtMostOnce).await.unwrap();
+        client.subscribe("#", QoS::AtMostOnce).await?;
 
         Ok((Self { client }, event_loop))
     }
