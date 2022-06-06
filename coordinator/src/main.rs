@@ -27,11 +27,11 @@ async fn main() {
     let db = Database::new(database_url);
 
     let mut retries = 0;
-    while db.check_connection().await.is_err() {
+    while let Err(e) = db.check_connection().await {
         if retries == 3 {
-            panic!("Unable to connect to database.");
+            panic!("Unable to connect to database: {e:?}");
         }
-        info!("Trying to connect to database...");
+        info!("Waiting for database to start...");
         tokio::time::sleep(Duration::from_millis(5000)).await;
         retries += 1;
     }
@@ -52,9 +52,9 @@ async fn main() {
 
     let mut retries = 0;
     // Poll connection acknowledgement.
-    while event_loop.poll().await.is_err() {
+    while let Err(e) = event_loop.poll().await {
         if retries == 3 {
-            panic!("Unable to connect to broker.");
+            panic!("Unable to connect to broker: {e:?}");
         }
         info!("Waiting for MQTT broker to start...");
         tokio::time::sleep(Duration::from_millis(5000)).await;
