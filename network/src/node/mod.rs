@@ -27,13 +27,15 @@ impl Node {
     }
 
     pub async fn register_to_network(&self, keys: &key::Keys) -> Result<()> {
-        self.client
-            .publish(
-                CoordinatorTopic::RegisterNode,
-                QoS::ExactlyOnce,
-                false,
-                "lol"
-            ).await
-             .map_err(Into::into)
+        // self.client
+        //     .publish(
+        //         CoordinatorTopic::RegisterNode,
+        //         QoS::ExactlyOnce,
+        //         false,
+        //         "lol"
+        //     ).await
+        //      .map_err(Into::into)
+
+        Ok(())
     }
 }
