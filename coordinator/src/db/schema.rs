@@ -19,6 +19,14 @@ table! {
 }
 
 table! {
+    node_session (session_token) {
+        session_token -> Bytea,
+        node_id -> Int8,
+        created -> Timestamptz,
+    }
+}
+
+table! {
     node_storage_mapping (mapping_id) {
         mapping_id -> Int8,
         backup_job_id -> Int8,
@@ -30,11 +38,13 @@ table! {
 }
 
 joinable!(backup_job -> node (node_id));
+joinable!(node_session -> node (node_id));
 joinable!(node_storage_mapping -> backup_job (backup_job_id));
 joinable!(node_storage_mapping -> node (to_node));
 
 allow_tables_to_appear_in_same_query!(
     backup_job,
     node,
+    node_session,
     node_storage_mapping,
 );
