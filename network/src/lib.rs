@@ -3,7 +3,6 @@ extern crate tracing;
 
 pub use rumqttc;
 
-#[macro_use]
 pub mod topics;
 pub mod coordinator;
 pub mod node;
