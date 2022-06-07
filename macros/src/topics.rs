@@ -21,10 +21,9 @@ pub enum Topic {
 
 pub struct LeafTopic {
     attributes: Vec<Attribute>,
-    message_type: Option<Type>,
     name: Ident,
-    _arrow_token: Token![ -> ],
-    topic: TopicString
+    topic: TopicString,
+    message_type: Option<Type>
 }
 
 pub enum TopicString {
@@ -64,35 +63,26 @@ impl Parse for LeafTopic {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         const MESSAGE_ATTRIBUTE: &'static str = "message";
 
-        let mut attributes = input.call(Attribute::parse_outer)?;
+        let attributes = input.call(Attribute::parse_outer)?;
+        let name = input.parse()?;
 
-        let message_attribute_indexes: Vec<usize> = attributes.iter()
-            .enumerate()
-            .filter(|(_, a)| a.path.get_ident().map(|i| &i.to_string() == MESSAGE_ATTRIBUTE).unwrap_or(false))
-            .map(|(i, _)| i)
-            .rev()
-            .collect();
+        input.parse::<Token![ -> ]>()?;
 
-        if message_attribute_indexes.len() > 1 {
-            return Err(input.error("Cannot have more than one message attribute for any given topic."));
-        }
+        let topic = input.parse()?;
 
-        let mut message_attributes: Vec<Attribute> = message_attribute_indexes.into_iter()
-            .map(|i| attributes.remove(i))
-            .collect();
+        let message_type = input.peek(Token![ => ])
+            .then(|| {
+                input.parse::<Token![ => ]>()?;
 
-        use syn::parse::Parser;
-
-        let message_type = message_attributes.pop()
-            .map(|a| parse_message_attribute.parse(a.tokens.into()))
+                input.parse::<Type>()
+            })
             .transpose()?;
 
         Ok(Self {
             attributes,
+            name,
+            topic,
             message_type,
-            name: input.parse()?,
-            _arrow_token: input.parse()?,
-            topic: input.parse()?
         })
     }
 }
