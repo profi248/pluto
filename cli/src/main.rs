@@ -1,7 +1,10 @@
 #[macro_use]
 extern crate tracing;
 
+use std::collections::HashMap;
 use rumqttc::Event;
+
+use std::sync::Arc;
 
 use pluto_network::node::{
     key::{ Keys, Mnemonic, Seed },
@@ -17,7 +20,8 @@ async fn main() {
     setup_dirs();
     log_init();
 
-    let (node, mut event_loop) = Node::new("localhost", 1883).await.expect("Error creating node");
+    let handler = Arc::new(IncomingHandler::new(HashMap::new()));
+    let (node, mut event_loop) = Node::new("localhost", 1883, handler).await.expect("Error creating node");
 
     tokio::spawn(async move {
         loop {
@@ -36,8 +40,6 @@ async fn main() {
     });
 
     let keys = Keys::generate();
-
-    node.register_to_network(&keys).await.expect("Error registering to network");
 
     loop {}
 }

@@ -8,11 +8,15 @@ extern crate diesel_migrations;
 
 pub mod db;
 
+use std::collections::HashMap;
+use rumqttc::{Event, Packet };
+
 use std::time::Duration;
-use rumqttc::Event;
+use std::sync::Arc;
 
 use pluto_network::coordinator::Coordinator;
 use pluto_network::prelude::*;
+
 use crate::db::Database;
 
 const MOSQUITTO_USERNAME: &'static str = "coordinator";
@@ -43,11 +47,14 @@ async fn main() {
     let mosquitto_port: u16 = std::env::var("MOSQUITTO_PORT").expect("No Mosquitto port provided").parse().expect("Mosquitto port invalid");
     let mosquitto_password = std::env::var("MOSQUITTO_PASSWORD").expect("No Mosquitto password provided");
 
+    let handler = Arc::new(IncomingHandler::new(HashMap::new()));
+
     let (coordinator, mut event_loop) = Coordinator::new(
         mosquitto_host,
         mosquitto_port,
         MOSQUITTO_USERNAME,
-        mosquitto_password
+        mosquitto_password,
+        handler.clone()
     ).await.expect("Error creating coordinator");
 
     let mut retries = 0;
@@ -75,8 +82,14 @@ async fn main() {
             };
 
             trace!("{:?}", event);
+
+            if let Event::Incoming(Packet::Publish(packet)) = event {
+                handler.handle(packet).await;
+            }
         }
     });
+
+
 
     loop {}
 }
