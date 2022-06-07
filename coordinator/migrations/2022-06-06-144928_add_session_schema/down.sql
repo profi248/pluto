@@ -1,1 +1,1 @@
-drop table node_sessions;
+drop table node_session;
