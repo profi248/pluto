@@ -48,6 +48,8 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 ///
 /// # Example
 /// ```
+/// # use pluto_macros::define_topics;
+/// # #[derive(Default)] struct AuthNodeInit;
 /// define_topics! {
 ///     Coordinator {
 ///         Auth -> "coordinator/auth" => AuthNodeInit
@@ -59,6 +61,7 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 /// ```
 /// generates the following code:
 /// ```
+/// # #[derive(Default)] struct AuthNodeInit;
 /// pub enum Topic {
 ///     Coordinator(CoordinatorTopic),
 ///     Node(NodeTopic),

@@ -150,6 +150,9 @@ __impl_iter_bits!(
 
 #[test]
 fn test_iter_n_bits() {
+    // it doesn't like that its read in a macro.
+    #![allow(unused_assignments)]
+
     let vec: Vec<u16> = vec![0b00000_101_0111_0011, 0b00000_011_0101_1000];
     let mut iter = vec.iter_n_bits(11);
 
@@ -159,6 +162,7 @@ fn test_iter_n_bits() {
         ($($b:expr),+) => {
             $(
                 assert_eq!(iter.next(), Some($b), "i = {}", counter);
+
                 counter += 1;
             )+
         }
