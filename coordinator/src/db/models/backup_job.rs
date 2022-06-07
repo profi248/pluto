@@ -17,7 +17,7 @@ pub struct BackupJob {
 }
 
 #[derive(Insertable)]
-#[table_name(backup_job)]
+#[table_name = "backup_job"]
 pub struct BackupJobInsert {
     pub node_id: i64,
     pub created: DateTime<Utc>,
