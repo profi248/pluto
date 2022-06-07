@@ -4,8 +4,7 @@ use crate::protos::auth::AuthNodeInit;
 
 define_topics! {
     Coordinator {
-        #[message = AuthNodeInit]
-        Auth -> "coordinator/auth"
+        Auth -> "coordinator/auth" => AuthNodeInit
     },
     Node {
         Auth -> "node/{id}/auth"
