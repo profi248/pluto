@@ -66,6 +66,7 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 ///     Coordinator(CoordinatorTopic),
 ///     Node(NodeTopic),
 /// }
+/// #[derive(Default)]
 /// pub struct CoordinatorAuthTopic;
 /// impl CoordinatorAuthTopic {
 ///     pub fn topic(&self) -> String {
@@ -78,6 +79,7 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 /// pub enum CoordinatorTopic {
 ///     Auth,
 /// }
+/// #[derive(Default)]
 /// pub struct NodeAuthTopic;
 /// impl NodeAuthTopic {
 ///     pub fn topic(&self, id: String) -> String {

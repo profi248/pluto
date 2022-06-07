@@ -147,10 +147,11 @@ pub fn expand_root(root: RootTopic) -> TokenStream {
     }
 
     quote! {
-        #[macro_export]
         macro_rules! topic {
             #macro_tokens
         }
+
+        pub(crate) use topic;
 
         pub enum Topic {
             #enum_tokens
@@ -229,6 +230,7 @@ fn expand_leaf(leaf: &LeafTopic, enum_tokens: &mut TokenStream, impl_tokens: &mu
 
     impl_tokens.extend([quote! {
         #(#attributes)*
+        #[derive(Default)]
         pub struct #struct_name;
 
         impl #struct_name {
