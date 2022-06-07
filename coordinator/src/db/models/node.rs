@@ -4,9 +4,9 @@ use diesel::prelude::*;
 
 use crate::db::{ Database, schema::node, Result };
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Debug, Queryable, Identifiable)]
 #[primary_key(node_id)]
-#[table_name(node)]
+#[table_name = "node"]
 pub struct Node {
     pub node_id: i64,
     pub pubkey: Vec<u8>,
@@ -14,8 +14,8 @@ pub struct Node {
     pub last_seen: DateTime<Utc>
 }
 
-#[derive(Insertable)]
-#[table_name(node)]
+#[derive(Debug, Insertable)]
+#[table_name = "node"]
 pub struct NodeInsert {
     pub pubkey: Vec<u8>,
     pub first_seen: DateTime<Utc>,

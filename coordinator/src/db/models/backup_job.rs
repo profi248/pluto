@@ -6,7 +6,7 @@ use crate::db::{ Database, schema::backup_job, Result };
 
 #[derive(Queryable, Debug, Identifiable)]
 #[primary_key(backup_job_id)]
-#[table_name(backup_job)]
+#[table_name = "backup_job"]
 pub struct BackupJob {
     pub backup_job_id: i64,
     pub node_id: i64,
