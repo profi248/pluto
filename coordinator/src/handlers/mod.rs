@@ -16,6 +16,7 @@ lazy_static::lazy_static! {
         let mut h: HashMap<Topic, Arc<dyn Handler>> = HashMap::new();
 
         __use_handlers! { h,
+            // register implemented message handlers here
             auth::AuthHandler,
         }
 

@@ -16,18 +16,27 @@ impl Client {
         Self { client, handler }
     }
 
-    pub async fn send<R: Request>(&self, topic: String, request: R, qos: QoS, retain: bool, timeout: Duration) -> Result<R::Response> {
-        let payload = request.write_to_bytes()?;
-
-        let initial_state = TypeId::of::<R::Response>() == TypeId::of::<()>();
-
-        let response_future = self.handler.listen(topic.clone(), timeout, initial_state).await.unwrap();
+    pub async fn send<M: MessageTrait>(&self, topic: String, message: M, qos: QoS, retain: bool) -> Result<()> {
+        let payload = message.write_to_bytes()?;
 
         self.client.publish(
             topic,
             qos,
             retain,
             payload
+        ).await?;
+
+        Ok(())
+    }
+
+    pub async fn send_and_listen<R: Request>(&self, topic: String, request: R, qos: QoS, retain: bool, timeout: Duration) -> Result<R::Response> {
+        let response_future = self.handler.listen(topic.clone(), timeout).await.unwrap();
+
+        self.send(
+            topic,
+            request,
+            qos,
+            retain
         ).await?;
 
         Ok(response_future.await?)

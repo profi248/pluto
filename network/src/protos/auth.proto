@@ -13,7 +13,7 @@ message AuthCoordinatorChallenge {
   }
 
   oneof challenge_status {
-    Error error = 1;
+    ErrorResponse error = 1;
     Challenge challenge = 2;
   }
 }
@@ -30,7 +30,7 @@ message AuthCoordinatorSessionToken {
   }
 
   oneof session_token_status {
-    Error error = 1;
+    ErrorResponse error = 1;
     SessionToken session_token = 2;
   }
 }

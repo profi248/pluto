@@ -8,6 +8,7 @@ extern crate diesel_migrations;
 
 pub mod db;
 pub mod handlers;
+mod logic;
 
 use std::collections::HashMap;
 use rumqttc::{ Event, Packet };

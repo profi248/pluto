@@ -8,3 +8,7 @@ impl Request for AuthNodeInit {
 impl Request for AuthCoordinatorChallenge {
     type Response = AuthNodeChallengeResponse;
 }
+
+impl Request for AuthNodeChallengeResponse {
+    type Response = AuthCoordinatorSessionToken;
+}

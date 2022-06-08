@@ -46,7 +46,7 @@ async fn main() {
     let mut a = AuthNodeInit::default();
     a.pubkey = vec![0x1a; 5];
     debug!("{:?}", a);
-    node.client().send(
+    node.client().send_and_listen(
         topic!(Coordinator::Auth).topic(),
         a,
         QoS::AtMostOnce,
