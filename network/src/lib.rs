@@ -25,6 +25,8 @@ mod error {
         Protobuf(#[from] ProtobufError),
         #[error("Timed out.")]
         TimedOut,
+        #[error("{0}")]
+        HandlerError(#[from] crate::handler::HandlerError),
     }
 }
 pub use error::{Error, Result};

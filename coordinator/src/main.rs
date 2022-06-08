@@ -84,7 +84,9 @@ async fn main() {
             trace!("{:?}", event);
 
             if let Event::Incoming(Packet::Publish(packet)) = event {
-                handler.handle(packet).await;
+                if let Err(e) = handler.handle(packet, coordinator.client()).await {
+                    error!("{e:?}");
+                }
             }
         }
     });

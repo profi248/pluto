@@ -35,16 +35,37 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 /// Identifiers can either open a braced scope to declare nesting, or
 /// use the `->` operator to declare the topic string literal. This supports
 /// rust formatting, and generates string parameters based on the identifiers
-/// in the format string literal.
-///
-/// Topics can be accessed via the generated `topics!` macro, where nested
-/// topic identifiers are separated by `::` like enums. This saves the user
-/// from needing to use all of the nested enums and variants which could look
-/// messy.
+/// in the format string literal. This can be obtained via the `topic() -> String`
+/// method on a leaf topic struct.
 ///
 /// On leaf topics, another operator `=> S` can be added to specify the type `S`
 /// of the initial request structure to this topic. This generates a function
 /// called `message(&self) -> S` on the given topic, which returns `Default::default()`.
+///
+/// Leaf topic structs can be accessed via the generated `topics!` macro, where nested
+/// topic identifiers are separated by `::` like enums. This saves the user
+/// from needing to use all of the nested enums and variants which could look
+/// messy.
+///
+/// [`Debug`] and [`Default`] are automatically derived for each leaf topic struct.
+///
+/// Each leaf topic struct implements [`FromStr`](std::str::FromStr) which returns
+/// `Ok(Self)` if the input string matches the topic string. This includes
+/// additional arguments, where it matches alphanumeric characters in place of the
+/// arguments. **NOTE:** that this uses the `regex` and `lazy_static` crates, so these
+/// will need to be imported alongside this macro.
+///
+/// Each leaf topic struct `S` also implements `From<S> for Topic` (and hence `Into<Topic>`)
+/// which converts it to a full path in terms of the root `Topic` enum.
+///
+/// The root `Topic` enum implements a method `from_topic(String) -> Option<Topic>`
+/// that returns the topic for which the string argument matches, if it exists.
+/// Note that this returns the path of the topic, not the leaf topic struct, due to
+/// static type limitations.
+///
+/// Each nested topic enum implements [`Debug`], [`Hash`], [`Eq`] and [`PartialEq`] by default.
+/// Additional attributes can be added to individual leaf topic structs by adding them above
+/// the leaf topic in the macro syntax.
 ///
 /// # Example
 /// ```
@@ -59,14 +80,34 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 ///     }
 /// }
 /// ```
-/// generates the following code:
+/// generates code which includes the following:
 /// ```
+/// # use std::str::FromStr;
 /// # #[derive(Default)] pub struct AuthNodeInit;
+/// #[derive(Debug, Hash, Eq, PartialEq)]
 /// pub enum Topic {
 ///     Coordinator(CoordinatorTopic),
 ///     Node(NodeTopic),
 /// }
-/// #[derive(Default)]
+///
+/// #[derive(Debug, Hash, Eq, PartialEq)]
+/// pub enum CoordinatorTopic {
+///     Auth,
+/// }
+///
+/// #[derive(Debug, Hash, Eq, PartialEq)]
+/// pub enum NodeTopic {
+///     Auth,
+/// }
+///
+/// impl Topic {
+///     pub fn from_topic(topic: String) -> Option<Topic> {
+///         /* ... */
+/// #       None
+///     }
+/// }
+///
+/// #[derive(Default, Debug)]
 /// pub struct CoordinatorAuthTopic;
 /// impl CoordinatorAuthTopic {
 ///     pub fn topic(&self) -> String {
@@ -76,18 +117,37 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 ///         Default::default()
 ///     }
 /// }
-/// pub enum CoordinatorTopic {
-///     Auth,
+/// impl From<CoordinatorAuthTopic> for Topic {
+///     fn from(t: CoordinatorAuthTopic) -> Topic {
+///         Topic::Coordinator(CoordinatorTopic::Auth)
+///     }
 /// }
-/// #[derive(Default)]
+/// impl FromStr for CoordinatorAuthTopic {
+///     type Err = ();
+///     /* ... */
+///#    fn from_str(s: &str) -> Result<Self, Self::Err> {
+///#         Err(())
+///#     }
+/// }
+///
+/// #[derive(Default, Debug)]
 /// pub struct NodeAuthTopic;
 /// impl NodeAuthTopic {
 ///     pub fn topic(&self, id: String) -> String {
 ///         format!("node/{id}/auth")
 ///     }
 /// }
-/// pub enum NodeTopic {
-///     Auth,
+/// impl From<NodeAuthTopic> for Topic {
+///     fn from(t: NodeAuthTopic) -> Topic {
+///         Topic::Node(NodeTopic::Auth)
+///     }
+/// }
+/// impl FromStr for NodeAuthTopic {
+///     type Err = ();
+///     /* ... */
+///#    fn from_str(s: &str) -> Result<Self, Self::Err> {
+///#         Err(())
+///#     }
 /// }
 ///
 /// macro_rules! topic {

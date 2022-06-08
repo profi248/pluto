@@ -6,8 +6,6 @@ use std::{
     collections::{ hash_map::Entry, HashMap },
     task::{ Context, Poll, Waker },
     time::{ Duration, Instant },
-    any::{ Any, TypeId },
-    borrow::Cow,
     marker::PhantomData,
     cell::UnsafeCell,
     future::Future,
@@ -62,6 +60,15 @@ impl From<ResponseError> for crate::Error {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum HandlerError {
+    #[error("The topic `{0:?}` is undefined.")]
+    InvalidTopic(String),
+    #[error("The topic `{0:?}` does not have a handler.")]
+    MissingHandler(String),
+
+}
+
 #[derive(Debug)]
 pub struct MissingHandler {
     topic: Topic,
@@ -113,7 +120,7 @@ impl IncomingHandler {
         Ok(future)
     }
 
-    pub async fn handle(&self, message: Publish) {
+    pub async fn handle(&self, message: Publish, client: &Client) -> crate::Result<()> {
         let mut topics = self.topics.lock().await;
 
         let responder = topics.get_mut(&message.topic)
@@ -124,8 +131,15 @@ impl IncomingHandler {
             i.wake(message.payload);
         }
         else {
-            // self.handlers.get()
+            let topic = Topic::from_topic(message.topic.clone())
+                .ok_or(HandlerError::InvalidTopic(message.topic.clone()))?;
+
+            self.handlers.get(&topic)
+                .ok_or(HandlerError::MissingHandler(message.topic.clone()))?
+                .handle(message.payload, client)?;
         }
+
+        Ok(())
     }
 }
 

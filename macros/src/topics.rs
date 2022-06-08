@@ -107,7 +107,6 @@ impl Parse for TopicString {
             .collect();
 
         let regex_match = REGEX.replace(&string, r"([[:alnum:]]+)");
-        let regex_match = regex_match.replace("/", "\\/");
         let regex_match = LitStr::new(&regex_match, literal.span());
 
         Ok(Self::WithParams {
@@ -133,14 +132,29 @@ pub fn expand_root(root: RootTopic) -> TokenStream {
     let mut enum_tokens = TokenStream::new();
     let mut impl_tokens = TokenStream::new();
     let mut macro_tokens = TokenStream::new();
+    let mut match_tokens = TokenStream::new();
 
     for topic in root.topics.iter() {
         match topic {
             Topic::Leaf(leaf) => {
-                expand_leaf(leaf, &mut enum_tokens, &mut impl_tokens, &[], &mut macro_tokens);
+                expand_leaf(
+                    leaf,
+                    &mut enum_tokens,
+                    &mut impl_tokens,
+                    &mut macro_tokens,
+                    &mut match_tokens,
+                    &[],
+                );
             }
             Topic::Nested(nested) => {
-                expand_nested(nested, &mut enum_tokens, &mut impl_tokens, &[], &mut macro_tokens);
+                expand_nested(
+                    nested,
+                    &mut enum_tokens,
+                    &mut impl_tokens,
+                    &mut macro_tokens,
+                    &mut match_tokens,
+                    &[],
+                );
             }
         }
     }
@@ -152,17 +166,38 @@ pub fn expand_root(root: RootTopic) -> TokenStream {
 
         pub(crate) use topic;
 
-        pub trait TopicDyn: Send + Sync + Default {
-            fn topic_dyn(args: &[String]) -> std::option::Option<Self>;
-        }
-
         impl Topic {
-            pub fn get(&self) -> Box<dyn TopicDyn> {
+            pub fn from_topic(topic: String) -> Option<Topic> {
+                use std::str::FromStr;
 
+                trait __swap_result {
+                    type Output;
+
+                    fn swap(self) -> Self::Output;
+                }
+
+                impl<T, E> __swap_result for Result<T,E> {
+                    type Output = Result<E, T>;
+
+                    fn swap(self) -> Self::Output {
+                        match self {
+                            Ok(t) => Err(t),
+                            Err(e) => Ok(e)
+                        }
+                    }
+                }
+
+                fn inner(topic: String) -> Result<(), Topic> {
+                    #match_tokens
+
+                    Ok(())
+                }
+
+                inner(topic).swap().ok()
             }
         }
 
-        #[derive(Debug)]
+        #[derive(Debug, Hash, Eq, PartialEq)]
         pub enum Topic {
             #enum_tokens
         }
@@ -175,8 +210,10 @@ fn expand_nested(
     nested: &NestedTopic,
     enum_tokens: &mut TokenStream,
     impl_tokens: &mut TokenStream,
+    macro_tokens: &mut TokenStream,
+    match_tokens: &mut TokenStream,
     context: &[String],
-    macro_tokens: &mut TokenStream) {
+) {
     let context = {
         let mut v = Vec::new();
 
@@ -199,26 +236,32 @@ fn expand_nested(
     for topics in nested.topics.iter() {
         match topics {
             Topic::Leaf(leaf) => {
-                expand_leaf(leaf, &mut inner_tokens, impl_tokens, &context, macro_tokens);
+                expand_leaf(
+                    leaf,
+                    &mut inner_tokens,
+                    impl_tokens,
+                    macro_tokens,
+                    match_tokens,
+                    &context,
+                );
             }
             Topic::Nested(nested) => {
-                expand_nested(nested, &mut inner_tokens, impl_tokens, &context, macro_tokens);
+                expand_nested(
+                    nested,
+                    &mut inner_tokens,
+                    impl_tokens,
+                    macro_tokens,
+                    match_tokens,
+                    &context,
+                );
             }
         }
     }
 
     impl_tokens.extend([quote! {
-        #[derive(Debug)]
+        #[derive(Debug, Hash, Eq, PartialEq)]
         pub enum #enum_name {
             #inner_tokens
-        }
-
-        impl std::str::FromStr for #enum_name {
-            type Err = ();
-
-            fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-
-            }
         }
     }]);
 }
@@ -227,8 +270,9 @@ fn expand_leaf(
     leaf: &LeafTopic,
     enum_tokens: &mut TokenStream,
     impl_tokens: &mut TokenStream,
+    macro_tokens: &mut TokenStream,
+    match_tokens: &mut TokenStream,
     context: &[String],
-    macro_tokens: &mut TokenStream
 ) {
     use std::str::FromStr;
 
@@ -252,15 +296,13 @@ fn expand_leaf(
     };
     let topic_path = TokenStream::from_str(&full_path).unwrap();
 
-    let (topic_string, params, topic_dyn_args, from_str) = match &leaf.topic {
+    let (topic_string, params, from_str) = match &leaf.topic {
         TopicString::Exact(s) => (
             quote! { #s.to_owned() },
-            TokenStream::new(),
             TokenStream::new(),
             quote! { if s == #s { Ok(Self) } else { Err(()) } }
         ),
         TopicString::WithParams { format_string, params, regex_match } => {
-            let topic_dyn_args = params.iter().enumerate().map(|(i, p)| quote!( #p.get(i)?,) ).collect();
             let params = params.iter().map(|i| quote!(, #i: String )).collect();
             let from_str = quote! {
                 use regex::Regex;
@@ -272,7 +314,7 @@ fn expand_leaf(
                 REGEX.is_match(&s).then(|| Self).ok_or(())
             };
 
-            (quote!( format!(#format_string) ), params, topic_dyn_args, from_str)
+            (quote!( format!(#format_string) ), params, from_str)
         }
     };
 
@@ -304,14 +346,6 @@ fn expand_leaf(
             }
         }
 
-        impl TopicDyn for #struct_name {
-            fn topic_dyn(s: &[String]) -> std::option::Option<Self> {
-                Some(Self.topic(
-                    #topic_dyn_args
-                ))
-            }
-        }
-
         impl std::str::FromStr for #struct_name {
             type Err = ();
 
@@ -327,5 +361,9 @@ fn expand_leaf(
 
     macro_tokens.extend([quote! {
         (#macro_path) => { #struct_name };
+    }]);
+
+    match_tokens.extend([quote! {
+        #struct_name::from_str(&topic).swap()?;
     }]);
 }
