@@ -1,2 +1,2 @@
 [workspace]
-members = [ "backup", "network", "cli", "gui", "coordinator", "utils", "macros" ]
+members = [ "backup", "network", "cli", "gui", "coordinator", "utils", "macros", "node" ]

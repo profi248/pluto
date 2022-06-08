@@ -401,6 +401,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "node"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "lazy_static",
+ "pluto-network",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -492,11 +501,16 @@ dependencies = [
 name = "pluto-coordinator"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "bytes",
  "chrono",
  "deadpool-diesel",
  "diesel",
  "diesel_migrations",
  "dotenv",
+ "getrandom",
+ "lazy_static",
+ "once_cell",
  "pluto-network",
  "thiserror",
  "tokio",
@@ -523,6 +537,7 @@ dependencies = [
 name = "pluto-network"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bytes",
  "getrandom",
  "lazy_static",

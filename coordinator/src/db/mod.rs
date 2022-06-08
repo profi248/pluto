@@ -12,6 +12,7 @@ use diesel::migration::RunMigrationsError;
 use diesel::result::Error as DieselError;
 use diesel::prelude::*;
 
+#[derive(Clone)]
 pub struct Database {
     pool: Pool<Manager>
 }

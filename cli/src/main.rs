@@ -8,9 +8,13 @@ use std::sync::Arc;
 
 use pluto_network::node::{
     key::{ Keys, Mnemonic, Seed },
-    Node
+    Node,
+};
+use pluto_network::{
+    topics::*, protos::auth::*,
 };
 use pluto_network::prelude::*;
+use rumqttc::{ QoS };
 
 pub const PLUTO_DIR: &'static str = ".pluto";
 pub const LOG_FILE: &'static str = "log.txt";
@@ -38,6 +42,17 @@ async fn main() {
             }
         }
     });
+
+    let mut a = AuthNodeInit::default();
+    a.pubkey = vec![0x1a; 5];
+    debug!("{:?}", a);
+    node.client().send(
+        topic!(Coordinator::Auth).topic(),
+        a,
+        QoS::AtMostOnce,
+        false,
+        std::time::Duration::from_secs(10)
+    ).await.expect("error");
 
     let keys = Keys::generate();
 

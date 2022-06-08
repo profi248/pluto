@@ -7,12 +7,15 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 pub mod db;
+pub mod handlers;
 
 use std::collections::HashMap;
-use rumqttc::{Event, Packet };
+use rumqttc::{ Event, Packet };
 
 use std::time::Duration;
 use std::sync::Arc;
+
+use once_cell::sync::OnceCell;
 
 use pluto_network::coordinator::Coordinator;
 use pluto_network::prelude::*;
@@ -20,6 +23,10 @@ use pluto_network::prelude::*;
 use crate::db::Database;
 
 const MOSQUITTO_USERNAME: &'static str = "coordinator";
+
+lazy_static::lazy_static! {
+    pub static ref DATABASE: OnceCell<Database> = OnceCell::new();
+}
 
 #[tokio::main]
 async fn main() {
@@ -29,6 +36,7 @@ async fn main() {
     let database_url = std::env::var("DATABASE_URL").expect("No database url provided");
 
     let db = Database::new(database_url);
+    DATABASE.set(db.clone()).ok().unwrap();
 
     let mut retries = 0;
     while let Err(e) = db.check_connection().await {
@@ -47,7 +55,7 @@ async fn main() {
     let mosquitto_port: u16 = std::env::var("MOSQUITTO_PORT").expect("No Mosquitto port provided").parse().expect("Mosquitto port invalid");
     let mosquitto_password = std::env::var("MOSQUITTO_PASSWORD").expect("No Mosquitto password provided");
 
-    let handler = Arc::new(IncomingHandler::new(HashMap::new()));
+    let handler = Arc::new(IncomingHandler::new(handlers::HANDLERS.clone()));
 
     let (coordinator, mut event_loop) = Coordinator::new(
         mosquitto_host,
@@ -81,10 +89,10 @@ async fn main() {
                 }
             };
 
-            trace!("{:?}", event);
+            // trace!("{:?}", event);
 
             if let Event::Incoming(Packet::Publish(packet)) = event {
-                if let Err(e) = handler.handle(packet, coordinator.client()).await {
+                if let Err(e) = handler.handle(packet, coordinator.client().clone()).await {
                     error!("{e:?}");
                 }
             }

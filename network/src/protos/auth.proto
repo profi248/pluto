@@ -12,7 +12,7 @@ message AuthCoordinatorChallenge {
     bytes challenge = 1;
   }
 
-  oneof challenge_error {
+  oneof challenge_status {
     Error error = 1;
     Challenge challenge = 2;
   }
@@ -29,7 +29,7 @@ message AuthCoordinatorSessionToken {
     bytes session_token = 1;
   }
 
-  oneof challenge_error {
+  oneof session_token_status {
     Error error = 1;
     SessionToken session_token = 2;
   }

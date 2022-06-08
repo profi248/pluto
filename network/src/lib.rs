@@ -37,4 +37,9 @@ pub mod prelude {
     pub use crate::handler::*;
 
     pub use rumqttc;
+
+    pub use protobuf::Message as MessageTrait;
+
+    // import macro
+    pub use crate::topics::topic;
 }

@@ -28,6 +28,7 @@ parking_lot = "0.12.1"
 tokio = { version = "1.19.2", features = [ "sync" ] }
 bytes = "1.1.0"
 regex = "1.5.6"
+async-trait = "0.1.56"
 
 [build-dependencies]
 protobuf-codegen = "3.0.3"

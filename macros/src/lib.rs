@@ -47,7 +47,7 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 /// from needing to use all of the nested enums and variants which could look
 /// messy.
 ///
-/// [`Debug`] and [`Default`] are automatically derived for each leaf topic struct.
+/// [`Debug`], [`Default`] and [`Clone`] are automatically derived for each leaf topic struct.
 ///
 /// Each leaf topic struct implements [`FromStr`](std::str::FromStr) which returns
 /// `Ok(Self)` if the input string matches the topic string. This includes
@@ -63,7 +63,7 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 /// Note that this returns the path of the topic, not the leaf topic struct, due to
 /// static type limitations.
 ///
-/// Each nested topic enum implements [`Debug`], [`Hash`], [`Eq`] and [`PartialEq`] by default.
+/// Each nested topic enum implements [`Debug`], [`Hash`], [`Eq`], [`PartialEq`] and [`Clone`] by default.
 /// Additional attributes can be added to individual leaf topic structs by adding them above
 /// the leaf topic in the macro syntax.
 ///
@@ -84,18 +84,18 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 /// ```
 /// # use std::str::FromStr;
 /// # #[derive(Default)] pub struct AuthNodeInit;
-/// #[derive(Debug, Hash, Eq, PartialEq)]
+/// #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 /// pub enum Topic {
 ///     Coordinator(CoordinatorTopic),
 ///     Node(NodeTopic),
 /// }
 ///
-/// #[derive(Debug, Hash, Eq, PartialEq)]
+/// #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 /// pub enum CoordinatorTopic {
 ///     Auth,
 /// }
 ///
-/// #[derive(Debug, Hash, Eq, PartialEq)]
+/// #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 /// pub enum NodeTopic {
 ///     Auth,
 /// }
@@ -107,7 +107,7 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 ///     }
 /// }
 ///
-/// #[derive(Default, Debug)]
+/// #[derive(Default, Debug, Clone)]
 /// pub struct CoordinatorAuthTopic;
 /// impl CoordinatorAuthTopic {
 ///     pub fn topic(&self) -> String {
@@ -130,7 +130,7 @@ pub fn wordlist(tokens: TokenStream) -> TokenStream {
 ///#     }
 /// }
 ///
-/// #[derive(Default, Debug)]
+/// #[derive(Default, Debug, Clone)]
 /// pub struct NodeAuthTopic;
 /// impl NodeAuthTopic {
 ///     pub fn topic(&self, id: String) -> String {

@@ -160,11 +160,14 @@ pub fn expand_root(root: RootTopic) -> TokenStream {
     }
 
     quote! {
-        macro_rules! topic {
-            #macro_tokens
+        mod _macro {
+            #[macro_export]
+            macro_rules! topic {
+                #macro_tokens
+            }
+            pub use topic;
         }
-
-        pub(crate) use topic;
+        pub use _macro::topic;
 
         impl Topic {
             pub fn from_topic(topic: String) -> Option<Topic> {
@@ -197,7 +200,7 @@ pub fn expand_root(root: RootTopic) -> TokenStream {
             }
         }
 
-        #[derive(Debug, Hash, Eq, PartialEq)]
+        #[derive(Debug, Hash, Eq, PartialEq, Clone)]
         pub enum Topic {
             #enum_tokens
         }
@@ -259,7 +262,7 @@ fn expand_nested(
     }
 
     impl_tokens.extend([quote! {
-        #[derive(Debug, Hash, Eq, PartialEq)]
+        #[derive(Debug, Hash, Eq, PartialEq, Clone)]
         pub enum #enum_name {
             #inner_tokens
         }
@@ -329,7 +332,7 @@ fn expand_leaf(
 
     impl_tokens.extend([quote! {
         #(#attributes)*
-        #[derive(Default, Debug)]
+        #[derive(Default, Debug, Clone)]
         pub struct #struct_name;
 
         impl #struct_name {

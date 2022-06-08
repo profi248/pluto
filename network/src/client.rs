@@ -1,6 +1,6 @@
 use rumqttc::{ AsyncClient, QoS };
 
-use std::{ sync::Arc, time::Duration };
+use std::{ sync::Arc, time::Duration, any::TypeId };
 
 use crate::topics::Request;
 use crate::prelude::*;
@@ -19,7 +19,9 @@ impl Client {
     pub async fn send<R: Request>(&self, topic: String, request: R, qos: QoS, retain: bool, timeout: Duration) -> Result<R::Response> {
         let payload = request.write_to_bytes()?;
 
-        let response_future = self.handler.listen(topic.clone(), timeout).await.unwrap();
+        let initial_state = TypeId::of::<R::Response>() == TypeId::of::<()>();
+
+        let response_future = self.handler.listen(topic.clone(), timeout, initial_state).await.unwrap();
 
         self.client.publish(
             topic,

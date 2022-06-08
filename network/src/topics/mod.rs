@@ -11,8 +11,6 @@ define_topics! {
     },
     Node {
         Auth -> "node/{id}/auth"
-        // "node/3478347384/auth" -> Node::Auth
-        // {} -> [[:alnum:]]
     }
 }
 

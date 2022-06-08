@@ -1,5 +1,3 @@
-pub mod auth;
-
 use pluto_network::{ topics::Topic, handler::Handler };
 use std::{ sync::Arc, collections::HashMap };
 
@@ -16,7 +14,7 @@ lazy_static::lazy_static! {
         let mut h: HashMap<Topic, Arc<dyn Handler>> = HashMap::new();
 
         __use_handlers! { h,
-            auth::AuthHandler,
+
         }
 
         h
