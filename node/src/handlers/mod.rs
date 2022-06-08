@@ -2,10 +2,10 @@ use pluto_network::{ topics::Topic, handler::Handler };
 use std::{ sync::Arc, collections::HashMap };
 
 macro_rules! __use_handlers {
-    ($m:ident, $($h:expr),+ $(,)?) => {
+    ($m:ident, $($h:expr),* $(,)?) => {
         $(
             $m.insert($h.topic(), Arc::new($h));
-        )+
+        )*
     }
 }
 
