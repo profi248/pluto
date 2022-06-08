@@ -11,7 +11,7 @@ pluto-utils = { path = "../utils" }
 
 # Networking
 rumqttc = "0.12.0"
-protobuf = "3.0.3"
+protobuf = { version = "3.0.3", features = [ "with-bytes" ] }
 
 # Logging
 tracing = "0.1.34"
@@ -24,6 +24,10 @@ getrandom = "0.2.6"
 # Utils
 thiserror = "1.0.31"
 lazy_static = "1.4.0"
+parking_lot = "0.12.1"
+tokio = { version = "1.19.2", features = [ "sync" ] }
+bytes = "1.1.0"
+regex = "1.5.6"
 
 [build-dependencies]
 protobuf-codegen = "3.0.3"

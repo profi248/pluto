@@ -31,6 +31,7 @@ pub enum TopicString {
     WithParams {
         format_string: LitStr,
         params: Vec<Ident>,
+        regex_match: LitStr,
     }
 }
 
@@ -61,8 +62,6 @@ impl Parse for Topic {
 
 impl Parse for LeafTopic {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        const MESSAGE_ATTRIBUTE: &'static str = "message";
-
         let attributes = input.call(Attribute::parse_outer)?;
         let name = input.parse()?;
 
@@ -87,11 +86,6 @@ impl Parse for LeafTopic {
     }
 }
 
-fn parse_message_attribute(input: ParseStream) -> syn::Result<Type> {
-    let _equals: Token![ = ] = input.parse()?;
-    input.parse()
-}
-
 impl Parse for TopicString {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let literal: LitStr = input.parse()?;
@@ -112,9 +106,13 @@ impl Parse for TopicString {
             .map(|c| Ident::new(c.get(1).unwrap().as_str(), literal.span()))
             .collect();
 
+        let regex_match = REGEX.replace(&string, r"([[:alnum:]]+)");
+        let regex_match = LitStr::new(&regex_match, literal.span());
+
         Ok(Self::WithParams {
             format_string: literal,
             params,
+            regex_match,
         })
     }
 }
@@ -134,14 +132,29 @@ pub fn expand_root(root: RootTopic) -> TokenStream {
     let mut enum_tokens = TokenStream::new();
     let mut impl_tokens = TokenStream::new();
     let mut macro_tokens = TokenStream::new();
+    let mut match_tokens = TokenStream::new();
 
     for topic in root.topics.iter() {
         match topic {
             Topic::Leaf(leaf) => {
-                expand_leaf(leaf, &mut enum_tokens, &mut impl_tokens, &[], &mut macro_tokens);
+                expand_leaf(
+                    leaf,
+                    &mut enum_tokens,
+                    &mut impl_tokens,
+                    &mut macro_tokens,
+                    &mut match_tokens,
+                    &[],
+                );
             }
             Topic::Nested(nested) => {
-                expand_nested(nested, &mut enum_tokens, &mut impl_tokens, &[], &mut macro_tokens);
+                expand_nested(
+                    nested,
+                    &mut enum_tokens,
+                    &mut impl_tokens,
+                    &mut macro_tokens,
+                    &mut match_tokens,
+                    &[],
+                );
             }
         }
     }
@@ -153,6 +166,38 @@ pub fn expand_root(root: RootTopic) -> TokenStream {
 
         pub(crate) use topic;
 
+        impl Topic {
+            pub fn from_topic(topic: String) -> Option<Topic> {
+                use std::str::FromStr;
+
+                trait __swap_result {
+                    type Output;
+
+                    fn swap(self) -> Self::Output;
+                }
+
+                impl<T, E> __swap_result for Result<T,E> {
+                    type Output = Result<E, T>;
+
+                    fn swap(self) -> Self::Output {
+                        match self {
+                            Ok(t) => Err(t),
+                            Err(e) => Ok(e)
+                        }
+                    }
+                }
+
+                fn inner(topic: String) -> Result<(), Topic> {
+                    #match_tokens
+
+                    Ok(())
+                }
+
+                inner(topic).swap().ok()
+            }
+        }
+
+        #[derive(Debug, Hash, Eq, PartialEq)]
         pub enum Topic {
             #enum_tokens
         }
@@ -161,7 +206,14 @@ pub fn expand_root(root: RootTopic) -> TokenStream {
     }
 }
 
-fn expand_nested(nested: &NestedTopic, enum_tokens: &mut TokenStream, impl_tokens: &mut TokenStream, context: &[String], macro_tokens: &mut TokenStream) {
+fn expand_nested(
+    nested: &NestedTopic,
+    enum_tokens: &mut TokenStream,
+    impl_tokens: &mut TokenStream,
+    macro_tokens: &mut TokenStream,
+    match_tokens: &mut TokenStream,
+    context: &[String],
+) {
     let context = {
         let mut v = Vec::new();
 
@@ -184,22 +236,44 @@ fn expand_nested(nested: &NestedTopic, enum_tokens: &mut TokenStream, impl_token
     for topics in nested.topics.iter() {
         match topics {
             Topic::Leaf(leaf) => {
-                expand_leaf(leaf, &mut inner_tokens, impl_tokens, &context, macro_tokens);
+                expand_leaf(
+                    leaf,
+                    &mut inner_tokens,
+                    impl_tokens,
+                    macro_tokens,
+                    match_tokens,
+                    &context,
+                );
             }
             Topic::Nested(nested) => {
-                expand_nested(nested, &mut inner_tokens, impl_tokens, &context, macro_tokens);
+                expand_nested(
+                    nested,
+                    &mut inner_tokens,
+                    impl_tokens,
+                    macro_tokens,
+                    match_tokens,
+                    &context,
+                );
             }
         }
     }
 
     impl_tokens.extend([quote! {
+        #[derive(Debug, Hash, Eq, PartialEq)]
         pub enum #enum_name {
             #inner_tokens
         }
     }]);
 }
 
-fn expand_leaf(leaf: &LeafTopic, enum_tokens: &mut TokenStream, impl_tokens: &mut TokenStream, context: &[String], macro_tokens: &mut TokenStream) {
+fn expand_leaf(
+    leaf: &LeafTopic,
+    enum_tokens: &mut TokenStream,
+    impl_tokens: &mut TokenStream,
+    macro_tokens: &mut TokenStream,
+    match_tokens: &mut TokenStream,
+    context: &[String],
+) {
     use std::str::FromStr;
 
     let variant_name = leaf.name.clone();
@@ -207,15 +281,40 @@ fn expand_leaf(leaf: &LeafTopic, enum_tokens: &mut TokenStream, impl_tokens: &mu
     let macro_path = TokenStream::from_str(&format!("{}::{}", context.join("::"), leaf.name)).unwrap();
     let attributes = &leaf.attributes;
 
-    let (topic_string, params) = match &leaf.topic {
+    let full_path = {
+        let (start, end) = context.iter()
+            .fold(("Topic::".to_owned(), String::new()),
+                |(mut start, mut end), topic| {
+                    start.push_str(&format!("{topic}({topic}Topic::"));
+                    end.push(')');
+
+                    (start, end)
+                }
+            );
+
+        format!("{}{}{}", start, variant_name, end)
+    };
+    let topic_path = TokenStream::from_str(&full_path).unwrap();
+
+    let (topic_string, params, from_str) = match &leaf.topic {
         TopicString::Exact(s) => (
             quote! { #s.to_owned() },
-            TokenStream::new()
+            TokenStream::new(),
+            quote! { if s == #s { Ok(Self) } else { Err(()) } }
         ),
-        TopicString::WithParams { format_string, params } => {
+        TopicString::WithParams { format_string, params, regex_match } => {
             let params = params.iter().map(|i| quote!(, #i: String )).collect();
+            let from_str = quote! {
+                use regex::Regex;
 
-            (quote!( format!(#format_string) ), params)
+                lazy_static::lazy_static! {
+                    static ref REGEX: Regex = Regex::new(#regex_match).unwrap();
+                }
+
+                REGEX.is_match(&s).then(|| Self).ok_or(())
+            };
+
+            (quote!( format!(#format_string) ), params, from_str)
         }
     };
 
@@ -230,7 +329,7 @@ fn expand_leaf(leaf: &LeafTopic, enum_tokens: &mut TokenStream, impl_tokens: &mu
 
     impl_tokens.extend([quote! {
         #(#attributes)*
-        #[derive(Default)]
+        #[derive(Default, Debug)]
         pub struct #struct_name;
 
         impl #struct_name {
@@ -240,6 +339,20 @@ fn expand_leaf(leaf: &LeafTopic, enum_tokens: &mut TokenStream, impl_tokens: &mu
 
             #message_function
         }
+
+        impl From<#struct_name> for Topic {
+            fn from(t: #struct_name) -> Topic {
+                #topic_path
+            }
+        }
+
+        impl std::str::FromStr for #struct_name {
+            type Err = ();
+
+            fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+                #from_str
+            }
+        }
     }]);
 
     enum_tokens.extend([quote! {
@@ -248,5 +361,9 @@ fn expand_leaf(leaf: &LeafTopic, enum_tokens: &mut TokenStream, impl_tokens: &mu
 
     macro_tokens.extend([quote! {
         (#macro_path) => { #struct_name };
+    }]);
+
+    match_tokens.extend([quote! {
+        #struct_name::from_str(&topic).swap()?;
     }]);
 }

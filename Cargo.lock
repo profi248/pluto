@@ -523,16 +523,20 @@ dependencies = [
 name = "pluto-network"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "getrandom",
  "lazy_static",
+ "parking_lot",
  "pluto-macros",
  "pluto-utils",
  "protobuf",
  "protobuf-codegen",
  "rand_chacha",
+ "regex",
  "ring",
  "rumqttc",
  "thiserror",
+ "tokio",
  "tracing",
 ]
 
@@ -576,6 +580,7 @@ version = "3.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d644aefa452a3188ce8fd92e71944ad082feca2016eb41d4b9c55ceba9e5f38"
 dependencies = [
+ "bytes",
  "once_cell",
  "protobuf-support",
  "thiserror",
