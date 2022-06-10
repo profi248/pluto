@@ -5,7 +5,7 @@ use pluto_network::protos::auth::{
       auth_coordinator_challenge::*,
       auth_coordinator_session_token::*
 };
-use pluto_network::protos::_status::{ ErrorResponse, error_response::ErrorType };
+use pluto_network::protos::shared::{ ErrorResponse, error_response::ErrorType };
 
 use crate::DATABASE;
 use crate::rumqttc::QoS;

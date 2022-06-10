@@ -33,7 +33,7 @@ pub struct Message {
 }
 
 impl Message {
-    fn new(bytes: Bytes) -> Self {
+    pub(crate) fn new(bytes: Bytes) -> Self {
         Self { bytes }
     }
 

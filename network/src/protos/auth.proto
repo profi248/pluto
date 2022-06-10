@@ -1,5 +1,5 @@
 syntax = "proto3";
-import "_status.proto";
+import "shared.proto";
 
 // Node authentication initialization
 message AuthNodeInit {

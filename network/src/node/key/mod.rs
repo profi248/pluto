@@ -5,16 +5,16 @@ use rand_chacha::{ ChaCha20Rng,
     rand_core::{ RngCore, SeedableRng }
 };
 
-use ring::signature::Ed25519KeyPair;
+use x25519_dalek::{ PublicKey, StaticSecret };
 
-/// Represents an [`Ed25519`](Ed25519KeyPair) public and private key pair for authentication.
+/// Represents an [X25519](x25519_dalek) [public](PublicKey) and [private](StaticSecret) key pair for authentication.
 ///
 /// These keys are generated from a seeded PRNG ([`ChaCha20`](ChaCha20Rng)), meaning
 /// they can be recreated given the initial entropy.
-#[derive(Debug)]
 pub struct Keys {
     seed: Seed,
-    pair: Ed25519KeyPair,
+    public_key: PublicKey,
+    private_key: StaticSecret,
 }
 
 impl Keys {
@@ -29,30 +29,45 @@ impl Keys {
         Self::from_entropy(entropy)
     }
 
-    /// Recreates the [`Ed25519`](Ed25519KeyPair) key pair given the initial entropy.
+    /// Creates the [`X25519`](x25519_dalek) key pair given the initial entropy.
     pub fn from_entropy(entropy: Entropy) -> Self {
         let mut rng = ChaCha20Rng::from_seed(entropy);
 
         let mut keypair_seed: Entropy = Default::default();
         rng.fill_bytes(&mut keypair_seed);
 
-        let pair = Ed25519KeyPair::from_seed_unchecked(&keypair_seed)
-            .expect("Failed to generate keypair");
+        let private_key = StaticSecret::from(keypair_seed);
+        let public_key = PublicKey::from(&private_key);
 
         Self {
             seed: Seed::from_entropy(rng.get_seed()),
-            pair,
+            public_key,
+            private_key,
         }
     }
 
-    /// Returns the [`Ed25519`](Ed25519KeyPair).
-    pub fn pair(&self) -> &Ed25519KeyPair {
-        &self.pair
+    /// Returns the [X25519](x25519_dalek) [public key](PublicKey).
+    pub fn public_key(&self) -> &PublicKey {
+        &self.public_key
+    }
+
+    /// Returns the [X25519](x25519_dalek) [private key](StaticSecret).
+    pub fn private_key(&self) -> &StaticSecret {
+        &self.private_key
     }
 
     /// Returns the [`Seed`] used to generate the keys.
     pub fn seed(&self) -> &Seed {
         &self.seed
+    }
+}
+
+impl std::fmt::Debug for Keys {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Keys")
+            .field("seed", &self.seed)
+            .field("public_key", &self.public_key)
+            .finish()
     }
 }
 

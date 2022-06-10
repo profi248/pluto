@@ -10,3 +10,11 @@ message ErrorResponse {
   ErrorType error = 2;
   string message = 3;
 }
+
+message EncryptedMessage {
+  bytes ephemeral_pubkey = 1;
+  bytes sender_pubkey = 2;
+  bytes salt = 3;
+  bytes nonce = 4;
+  bytes inner_message = 5;
+}

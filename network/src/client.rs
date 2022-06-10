@@ -1,6 +1,6 @@
 use rumqttc::{ AsyncClient, QoS };
 
-use std::{ sync::Arc, time::Duration, any::TypeId };
+use std::{ sync::Arc, time::Duration };
 
 use crate::topics::Request;
 use crate::prelude::*;
