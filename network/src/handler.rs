@@ -116,14 +116,9 @@ impl IncomingHandler {
         }
     }
 
-    pub(crate) async fn listen<M: MessageTrait>(&self, topic: String, timeout: Duration, initial_state: bool) -> Result<ResponseFuture<M>, AlreadyListening> {
+    pub(crate) async fn listen<M: MessageTrait>(&self, topic: String, timeout: Duration) -> Result<ResponseFuture<M>, AlreadyListening> {
         let future = ResponseFuture::new(timeout);
         let responder = Responder::new(future.inner.clone());
-
-        if initial_state {
-            responder.wake_empty();
-            return Ok(future);
-        }
 
         let clone = responder.clone();
         tokio::spawn(async move {
@@ -232,13 +227,6 @@ impl Responder {
         self.inner.waker.lock()
             .take().map(|w| w.wake());
     }
-
-    fn wake_empty(&self) {
-        self.inner.received.fetch_or(RESPONSE_STATE, Ordering::Release);
-
-        self.inner.waker.lock()
-            .take().map(|w| w.wake());
-    }
 }
 
 pub struct ResponseFuture<M: MessageTrait> {
@@ -268,12 +256,7 @@ impl<M: MessageTrait> Future for ResponseFuture<M> {
         }
 
         if state & RESPONSE_STATE != 0 {
-            let cell = unsafe { self.inner.cell.get().as_mut().unwrap() };
-
-            let bytes = match cell.take() {
-                Some(b) => b,
-                None => return Poll::Ready(Ok(M::default())),
-            };
+            let bytes = unsafe { self.inner.cell.get().as_mut().unwrap().take().unwrap() };
 
             let mut stream = CodedInputStream::from_tokio_bytes(&bytes);
 

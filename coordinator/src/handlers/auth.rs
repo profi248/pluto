@@ -20,7 +20,6 @@ impl Handler for AuthHandler {
         topic!(Coordinator::Auth).into()
     }
 
-    // todo: how to handle client id?
     async fn handle(&self, message: Message, client: Client) {
         let init_msg: AuthNodeInit = match message.parse() {
             Some(m) => m,
@@ -29,6 +28,9 @@ impl Handler for AuthHandler {
         };
 
         let node_pubkey_bytes = init_msg.pubkey;
+        let node_topic_id = base64::encode_config(node_pubkey_bytes.clone(),
+                                                  base64::URL_SAFE_NO_PAD);
+
         let db = DATABASE.get().unwrap();
 
         let mut challenge_msg_wrapper = AuthNodeInit::response();
@@ -40,7 +42,7 @@ impl Handler for AuthHandler {
                 error_msg.error = ErrorType::PUBKEY_LENGTH_INVALID.into();
                 challenge_msg_wrapper.challenge_status = Some(Challenge_status::Error(error_msg));
                 client.send(
-                    topic!(Node::Auth).topic("a".to_owned()),
+                    topic!(Node::Auth).topic(node_topic_id),
                     challenge_msg_wrapper.clone(),
                     QoS::AtMostOnce,
                     false
@@ -59,7 +61,7 @@ impl Handler for AuthHandler {
 
         // send challenge to client
         let challenge_response_msg: AuthNodeChallengeResponse = match client.send_and_listen(
-            topic!(Node::Auth).topic("a".to_owned()),
+            topic!(Node::Auth).topic(node_topic_id.clone()),
             challenge_msg_wrapper,
             QoS::AtMostOnce,
             false,
@@ -90,8 +92,9 @@ impl Handler for AuthHandler {
             }
         }
 
+        // todo encrypt the message
         client.send(
-            topic!(Node::Auth).topic("a".to_owned()),
+            topic!(Node::Auth).topic(node_topic_id),
             token_msg_wrapper,
             QoS::AtMostOnce,
             false,
