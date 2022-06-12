@@ -8,6 +8,11 @@ edition = "2021"
 [dependencies]
 pluto-network = { path = "../network" }
 
+# Database
+diesel = { version = "1.4.8", features = [ "sqlite", "chrono" ] }
+diesel_migrations = "1.4.0"
+
 # Utils
 lazy_static = "1.4.0"
 async-trait = "0.1.56"
+dirs = "4.0.0"

@@ -16,12 +16,9 @@ use pluto_network::{
 use pluto_network::prelude::*;
 use rumqttc::{ QoS };
 
-pub const PLUTO_DIR: &'static str = ".pluto";
-pub const LOG_FILE: &'static str = "log.txt";
-
 #[tokio::main]
 async fn main() {
-    setup_dirs();
+    pluto_node::utils::setup_dirs();
     log_init();
 
     let handler = Arc::new(IncomingHandler::new(HashMap::new()));
@@ -61,24 +58,13 @@ async fn main() {
     loop {}
 }
 
-fn setup_dirs() {
-    let mut path = dirs::home_dir().unwrap();
-    path.push(PLUTO_DIR);
-
-    if !path.exists() { std::fs::create_dir(&path).unwrap(); }
-
-    if !path.is_dir() { panic!("{} is a file.", PLUTO_DIR); }
-}
-
 fn log_init() {
     use tracing_subscriber::filter::{ targets::Targets, LevelFilter };
     use tracing_subscriber::layer::{ SubscriberExt, Layer as _ };
     use tracing_subscriber::fmt::Layer;
     use tracing_subscriber::prelude::*;
 
-    let mut path = dirs::home_dir().unwrap();
-    path.push(PLUTO_DIR);
-    path.push(LOG_FILE);
+    let mut path = pluto_node::utils::get_log_file_path();
 
     let log_file = std::fs::File::options()
         .create(true)
