@@ -1,2 +1,2 @@
 mod handlers;
-mod auth;
+pub mod auth;

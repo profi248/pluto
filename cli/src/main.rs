@@ -43,18 +43,20 @@ async fn main() {
         }
     });
 
-    let mut a = AuthNodeInit::default();
-    a.pubkey = vec![0x1a; 5];
-    debug!("{:?}", a);
-    node.client().send_and_listen(
-        topic!(Coordinator::Auth).topic(),
-        a,
-        QoS::AtMostOnce,
-        false,
-        std::time::Duration::from_secs(10)
-    ).await.expect("error");
+    // let mut a = AuthNodeInit::default();
+    // a.pubkey = vec![0x1a; 5];
+    // debug!("{:?}", a);
+    // node.client().send_and_listen(
+    //     topic!(Coordinator::Auth).topic(),
+    //     a,
+    //     QoS::AtMostOnce,
+    //     false,
+    //     std::time::Duration::from_secs(10)
+    // ).await.expect("error");
 
     let keys = Keys::generate();
+
+    pluto_node::auth::register_node(node.client(), &keys).await.unwrap();
 
     loop {}
 }

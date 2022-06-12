@@ -6,31 +6,14 @@ message AuthNodeInit {
   bytes pubkey = 1;
 }
 
-// Coordinator response with authentication challenge random string
-message AuthCoordinatorChallenge {
-  message Challenge {
-    bytes challenge = 1;
+// Coordinator response with either success or error
+message AuthCoordinatorSuccess {
+  message Success {
+    bool success = 1;
   }
 
-  oneof challenge_status {
+  oneof auth_status {
     ErrorResponse error = 1;
-    Challenge challenge = 2;
-  }
-}
-
-// Node response with signed challenge string
-message AuthNodeChallengeResponse {
-  bytes response = 1;
-}
-
-// Coordinator response with session token
-message AuthCoordinatorSessionToken {
-  message SessionToken {
-    bytes session_token = 1;
-  }
-
-  oneof session_token_status {
-    ErrorResponse error = 1;
-    SessionToken session_token = 2;
+    Success success = 2;
   }
 }

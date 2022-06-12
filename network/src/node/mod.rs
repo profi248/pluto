@@ -9,7 +9,7 @@ pub const MQTT_NODE_PASSWORD: &'static str = "node";
 use crate::prelude::*;
 
 use crate::{
-    Result, topics::Request, client::Client
+    Result, client::Client
 };
 
 pub mod key;

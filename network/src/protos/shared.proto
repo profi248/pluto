@@ -2,11 +2,14 @@ syntax = "proto3";
 
 message ErrorResponse {
   enum ErrorType {
-    SERVER_ERROR = 0;
-    PUBKEY_LENGTH_INVALID = 1;
-    CHALLENGE_RESPONSE_INVALID = 2;
-    SESSION_INVALID = 3;
+    BAD_ERROR = 0;
+    SERVER_ERROR = 1;
+    BAD_REQUEST = 2;
+    CRYPTO_ERROR = 3;
+    PUBKEY_LENGTH_INVALID = 4;
+    ALREADY_REGISTERED = 5;
   };
+
   ErrorType error = 2;
   string message = 3;
 }

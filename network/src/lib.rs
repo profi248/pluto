@@ -29,6 +29,7 @@ mod error {
         HandlerError(#[from] crate::handler::HandlerError),
     }
 }
+
 pub use error::{Error, Result};
 
 pub mod prelude {
