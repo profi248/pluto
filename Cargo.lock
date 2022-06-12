@@ -747,6 +747,7 @@ dependencies = [
  "dirs",
  "lazy_static",
  "pluto-network",
+ "tracing",
 ]
 
 [[package]]

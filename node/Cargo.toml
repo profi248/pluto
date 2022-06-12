@@ -12,6 +12,9 @@ pluto-network = { path = "../network" }
 diesel = { version = "1.4.8", features = [ "sqlite", "chrono" ] }
 diesel_migrations = "1.4.0"
 
+# Logging
+tracing = "0.1.34"
+
 # Utils
 lazy_static = "1.4.0"
 async-trait = "0.1.56"

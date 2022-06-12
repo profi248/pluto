@@ -53,6 +53,7 @@ async fn main() {
 
     let keys = Keys::generate();
 
+    pluto_node::db::Database::run_migrations().unwrap();
     pluto_node::auth::register_node(node.client(), &keys).await.unwrap();
 
     loop {}

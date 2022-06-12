@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-pub const PLUTO_DIR: &str = ".pluto";
+pub const PLUTO_DIR: &str = "pluto";
 pub const LOG_FILE: &str = "log.txt";
 pub const DB_FILE: &str = "pluto.db";
 

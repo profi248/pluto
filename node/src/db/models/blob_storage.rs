@@ -1,5 +1,5 @@
 use diesel::prelude::*;
-use crate::db::{ Database, DatabaseError };
+use crate::db::{ Database };
 use crate::db::schema::blob_storage;
 
 #[derive(Queryable, Debug, Identifiable, Insertable)]
