@@ -19,15 +19,38 @@ use bytes::Bytes;
 use parking_lot::Mutex as BlockingMutex;
 use tokio::sync::Mutex as AsyncMutex;
 
-use crate::{ client::Client, topics::{ Topic, Request } };
+use crate::{
+    client::Client,
+    topics::Topic,
+    message::{ MessageVariant, EncryptedMessage },
+    protos::shared::EncryptedMessage as EncryptedMessageStruct,
+};
 
+/// A static handler object for a given topic.
+///
+/// [`handle`](#tymethod.handle) will be called when
+/// [`IncomingHandler`] receives a message on the topic
+/// returned by [`topic`](#tymethod.topic). This method
+/// returns `Option<()>` to allow [`?`](std::ops::Try)
+/// syntax, but does not actually handle any errros.
+///
+/// Note that handler objects are expected to be static,
+/// so while these functions use `&self`, they should not
+/// hold any form of state.
 #[async_trait::async_trait]
 pub trait Handler: Send + Sync + 'static {
     fn topic(&self) -> Topic;
 
-    async fn handle(&self, message: Message, client: Client);
+    async fn handle(&self, message: Message, client: Client) -> Option<()>;
 }
 
+/// A wrapper around raw message bytes.
+///
+/// Contains methods to parse the message into given
+/// types.
+///
+/// This is necessary as [`Handler`]s need to be
+/// given messages dynamically.
 pub struct Message {
     bytes: Bytes
 }
@@ -37,8 +60,16 @@ impl Message {
         Self { bytes }
     }
 
-    pub fn parse<M: MessageTrait>(self) -> Option<M> {
-        M::parse_from_tokio_bytes(&self.bytes).ok()
+    /// Parses this message as unencrypted.
+    pub fn unencrypted<M: MessageTrait>(self) -> Result<M, Self> {
+        M::parse_from_tokio_bytes(&self.bytes).map_err(|_| self)
+    }
+
+    /// Parses this message as encrypted.
+    pub fn encrypted<M: MessageTrait>(self) -> Result<EncryptedMessage<M>, Self> {
+        EncryptedMessageStruct::parse_from_tokio_bytes(&self.bytes)
+            .map(Into::into)
+            .map_err(|_| self)
     }
 }
 
@@ -109,6 +140,8 @@ pub struct IncomingHandler {
 }
 
 impl IncomingHandler {
+    /// Creates a new main handler given a hashmap of
+    /// individual message handlers by topic.
     pub fn new(handlers: HashMap<Topic, Arc<dyn Handler>>) -> Self {
         Self {
             topics: AsyncMutex::new(HashMap::new()),
@@ -116,8 +149,19 @@ impl IncomingHandler {
         }
     }
 
-    pub(crate) async fn listen<M: MessageTrait>(&self, topic: String, timeout: Duration) -> Result<ResponseFuture<M>, AlreadyListening> {
-        let future = ResponseFuture::new(timeout);
+    /// Listens to a given topic, and returns a future for the resposne.
+    ///
+    /// This method can fail directly if there is already a different context
+    /// listening to this topic.
+    ///
+    /// The future also returns a `Result` for errors with parsing or if
+    /// it times out. See [`ResponseError`].
+    pub(crate) async fn listen<M: MessageTrait>(&self,
+        topic: String,
+        expects_encrypted: bool,
+        timeout: Duration
+    ) -> Result<ResponseFuture<M>, AlreadyListening> {
+        let future = ResponseFuture::new(expects_encrypted, timeout);
         let responder = Responder::new(future.inner.clone());
 
         let clone = responder.clone();
@@ -147,6 +191,9 @@ impl IncomingHandler {
         Ok(future)
     }
 
+    /// Handles the incoming message.
+    ///
+    /// This method forwards incoming messages to handlers or other listening contexts.
     pub async fn handle(&self, message: Publish, client: Client) -> crate::Result<()> {
         let mut topics = self.topics.lock().await;
 
@@ -229,16 +276,19 @@ impl Responder {
     }
 }
 
+/// A future waiting for a response message `M`.
 pub struct ResponseFuture<M: MessageTrait> {
     inner: Arc<Inner>,
+    expects_encrypted: bool,
 
-    _phantom: PhantomData<M>
+    _phantom: PhantomData<MessageVariant<M>>
 }
 
 impl<M: MessageTrait> ResponseFuture<M> {
-    fn new(timeout: Duration) -> Self {
+    fn new(expects_encrypted: bool, timeout: Duration) -> Self {
         Self {
             inner: Arc::new(Inner::new(timeout)),
+            expects_encrypted,
 
             _phantom: PhantomData
         }
@@ -246,7 +296,7 @@ impl<M: MessageTrait> ResponseFuture<M> {
 }
 
 impl<M: MessageTrait> Future for ResponseFuture<M> {
-    type Output = Result<M, ResponseError>;
+    type Output = Result<MessageVariant<M>, ResponseError>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let state = self.inner.received.load(Ordering::Acquire);
@@ -260,7 +310,18 @@ impl<M: MessageTrait> Future for ResponseFuture<M> {
 
             let mut stream = CodedInputStream::from_tokio_bytes(&bytes);
 
-            return Poll::Ready(M::parse_from(&mut stream).map_err(Into::into));
+            let message: Result<MessageVariant<M>, ResponseError> = if self.expects_encrypted {
+                EncryptedMessageStruct::parse_from(&mut stream)
+                    .map(|m| EncryptedMessage::from(m))
+                    .map(Into::into)
+                    .map_err(Into::into)
+            } else {
+                M::parse_from(&mut stream)
+                    .map(Into::into)
+                    .map_err(Into::into)
+            };
+
+            return Poll::Ready(message);
         }
 
         *self.inner.waker.lock() = Some(cx.waker().clone());

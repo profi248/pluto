@@ -14,7 +14,6 @@ deadpool-diesel = { version = "0.3.1", features = [ "postgres" ] }
 diesel_migrations = "1.4.0"
 
 # Cryptography
-ring = "0.16.20"
 getrandom = "0.2.6"
 
 # Async

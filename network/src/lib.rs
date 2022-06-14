@@ -1,13 +1,16 @@
+#[allow(unused_imports)]
 #[macro_use]
 extern crate tracing;
 
 pub use rumqttc;
+pub use x25519_dalek;
 
-pub mod coordinator;
 pub mod handler;
 pub mod topics;
-pub mod node;
 pub mod client;
+pub mod key;
+pub mod message;
+pub mod utils;
 
 pub mod protos;
 
@@ -34,12 +37,15 @@ pub use error::{Error, Result};
 
 pub mod prelude {
     pub use crate::error::*;
-
     pub use crate::handler::*;
+    pub use crate::message::*;
 
     pub use rumqttc;
+    pub use x25519_dalek;
 
     pub use protobuf::Message as MessageTrait;
+
+    pub(crate) use std::result::Result as StdResult;
 
     // import macro
     pub use crate::topics::topic;

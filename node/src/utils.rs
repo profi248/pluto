@@ -26,7 +26,7 @@ pub fn get_log_file_path() -> String {
 }
 
 pub fn setup_dirs() {
-    let mut path = get_pluto_dir();
+    let path = get_pluto_dir();
 
     if !path.exists() { std::fs::create_dir(&path).unwrap(); }
     if !path.is_dir() { panic!("{} is a file.", PLUTO_DIR); }

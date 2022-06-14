@@ -15,9 +15,11 @@ message ErrorResponse {
 }
 
 message EncryptedMessage {
-  bytes ephemeral_pubkey = 1;
-  bytes sender_pubkey = 2;
-  bytes salt = 3;
-  bytes nonce = 4;
-  bytes inner_message = 5;
+  // 0xaa 0xbb
+  bytes _encrypted = 1;
+  bytes ephemeral_pubkey = 2;
+  bytes sender_pubkey = 3;
+  bytes salt = 4;
+  bytes nonce = 5;
+  bytes inner_message = 6;
 }

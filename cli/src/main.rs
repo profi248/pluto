@@ -2,27 +2,32 @@
 extern crate tracing;
 
 use std::collections::HashMap;
-use rumqttc::Event;
 
 use std::sync::Arc;
 
-use pluto_network::node::{
-    key::{ Keys, Mnemonic, Seed },
-    Node,
-};
+use pluto_network::key::{ Keys, Mnemonic, Seed };
 use pluto_network::{
     topics::*, protos::auth::*,
 };
 use pluto_network::prelude::*;
-use rumqttc::{ QoS };
+use rumqttc::{ Event, Incoming, QoS };
+
+use pluto_node::node::Node;
 
 #[tokio::main]
 async fn main() {
     pluto_node::utils::setup_dirs();
     log_init();
+    pluto_node::db::Database::run_migrations().unwrap();
+
+    let keys = Keys::generate();
 
     let handler = Arc::new(IncomingHandler::new(HashMap::new()));
-    let (node, mut event_loop) = Node::new("localhost", 1883, handler).await.expect("Error creating node");
+    let client_id = pluto_network::utils::get_node_topic_id(keys.public_key().as_bytes().to_vec());
+
+    let (node, mut event_loop) = Node::new("localhost", 1883, client_id, handler.clone()).await.expect("Error creating node");
+
+    let client = node.client().clone();
 
     tokio::spawn(async move {
         loop {
@@ -34,8 +39,11 @@ async fn main() {
                 }
             };
 
-            if let Event::Incoming(event) = event {
+            if let Event::Incoming(Incoming::Publish(event)) = event {
                 trace!("{:?}", event);
+                if let Err(e) = handler.handle(event, client.clone()).await {
+                    error!("{e:?}")
+                }
             }
         }
     });
@@ -49,11 +57,9 @@ async fn main() {
     //     QoS::AtMostOnce,
     //     false,
     //     std::time::Duration::from_secs(10)
+
     // ).await.expect("error");
 
-    let keys = Keys::generate();
-
-    pluto_node::db::Database::run_migrations().unwrap();
     pluto_node::auth::register_node(node.client(), &keys).await.unwrap();
 
     loop {}
@@ -65,7 +71,7 @@ fn log_init() {
     use tracing_subscriber::fmt::Layer;
     use tracing_subscriber::prelude::*;
 
-    let mut path = pluto_node::utils::get_log_file_path();
+    let path = pluto_node::utils::get_log_file_path();
 
     let log_file = std::fs::File::options()
         .create(true)

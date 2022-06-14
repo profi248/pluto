@@ -2,7 +2,7 @@ use super::{ Mnemonic, Error };
 
 use sha2::{ Sha256, Digest };
 
-use pluto_utils::bits::{ BitsIter, IterBits };
+use pluto_utils::bits::{ IterBits };
 
 pub const SEED_NUM_BYTES: usize = 32;
 pub const SEED_NUM_BITS: usize = SEED_NUM_BYTES * 8;

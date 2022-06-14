@@ -9,16 +9,18 @@ extern crate diesel_migrations;
 pub mod db;
 pub mod handlers;
 mod logic;
+mod coordinator;
 
 use std::collections::HashMap;
 use rumqttc::{ Event, Packet };
+use x25519_dalek::{ StaticSecret, PublicKey };
 
 use std::time::Duration;
 use std::sync::Arc;
 
 use once_cell::sync::OnceCell;
 
-use pluto_network::coordinator::Coordinator;
+use crate::coordinator::Coordinator;
 use pluto_network::prelude::*;
 
 use crate::db::Database;
@@ -29,8 +31,33 @@ lazy_static::lazy_static! {
     pub static ref DATABASE: OnceCell<Database> = OnceCell::new();
 }
 
+lazy_static::lazy_static! {
+    pub static ref COORDINATOR_PUBKEY: PublicKey = {
+        let array: [u8; 32] = base64::decode(
+            &std::env::var("COORDINATOR_PUBKEY").expect("Coordiator pubkey not provided")
+        ).expect("Pubkey not valid base64").try_into().expect("Invalid pubkey length");
+
+        PublicKey::from(array)
+    };
+
+    pub static ref COORDINATOR_PRIVKEY: StaticSecret = {
+        let array: [u8; 32] = base64::decode(
+            &std::env::var("COORDINATOR_PRIVKEY").expect("Coordiator privkey not provided")
+        ).expect("Pubkey not valid base64").try_into().expect("Invalid privkey length");
+
+        StaticSecret::from(array)
+    };
+}
+
 #[tokio::main]
 async fn main() {
+    if std::env::args().len() == 2 {
+        if std::env::args().nth(1).unwrap() == "keygen" {
+            logic::keygen::generate_print_initial_keys();
+            return;
+        }
+    }
+
     dotenv::dotenv().ok().unwrap();
     log_init();
 
@@ -90,7 +117,7 @@ async fn main() {
                 }
             };
 
-            // trace!("{:?}", event);
+            trace!("{:?}", event);
 
             if let Event::Incoming(Packet::Publish(packet)) = event {
                 if let Err(e) = handler.handle(packet, coordinator.client().clone()).await {

@@ -690,7 +690,6 @@ dependencies = [
  "lazy_static",
  "once_cell",
  "pluto-network",
- "ring",
  "thiserror",
  "tokio",
  "tracing",
@@ -718,6 +717,7 @@ version = "0.1.0"
 dependencies = [
  "aes-gcm",
  "async-trait",
+ "base64",
  "bytes",
  "getrandom 0.2.6",
  "hkdf",
@@ -742,12 +742,14 @@ name = "pluto-node"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "base64",
  "diesel",
  "diesel_migrations",
  "dirs",
  "lazy_static",
  "pluto-network",
  "tracing",
+ "x25519-dalek",
 ]
 
 [[package]]
