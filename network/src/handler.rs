@@ -22,7 +22,7 @@ use tokio::sync::Mutex as AsyncMutex;
 use crate::{
     client::Client,
     topics::Topic,
-    message::{ MessageVariant, EncryptedMessage },
+    message::{ Message, MessageVariant, EncryptedMessage },
     protos::shared::EncryptedMessage as EncryptedMessageStruct,
 };
 
@@ -44,35 +44,6 @@ pub trait Handler: Send + Sync + 'static {
     async fn handle(&self, message: Message, client: Client) -> Option<()>;
 }
 
-/// A wrapper around raw message bytes.
-///
-/// Contains methods to parse the message into given
-/// types.
-///
-/// This is necessary as [`Handler`]s need to be
-/// given messages dynamically.
-pub struct Message {
-    bytes: Bytes
-}
-
-impl Message {
-    pub(crate) fn new(bytes: Bytes) -> Self {
-        Self { bytes }
-    }
-
-    /// Parses this message as unencrypted.
-    pub fn unencrypted<M: MessageTrait>(self) -> Result<M, Self> {
-        M::parse_from_tokio_bytes(&self.bytes).map_err(|_| self)
-    }
-
-    /// Parses this message as encrypted.
-    pub fn encrypted<M: MessageTrait>(self) -> Result<EncryptedMessage<M>, Self> {
-        EncryptedMessageStruct::parse_from_tokio_bytes(&self.bytes)
-            .map(Into::into)
-            .map_err(|_| self)
-    }
-}
-
 /// Error returned when there is already a different
 /// listener on the requested topic.
 #[derive(Debug)]
@@ -89,10 +60,14 @@ impl std::fmt::Display for AlreadyListening {
     }
 }
 
+/// Error received when listening for responses to messages.
 #[derive(Debug, thiserror::Error)]
 pub enum ResponseError {
+    /// No response message was received
+    /// within the timeout duration.
     #[error("Timed out.")]
     TimedOut,
+    /// Failed to deserialise/parse.
     #[error("{0}")]
     Protobuf(#[from] protobuf::Error)
 }
@@ -106,27 +81,17 @@ impl From<ResponseError> for crate::Error {
     }
 }
 
+/// Error received when handling incoming messages.
 #[derive(Debug, thiserror::Error)]
 pub enum HandlerError {
+    /// There is no defined topic which expects
+    /// this topic string.
     #[error("The topic `{0:?}` is undefined.")]
     InvalidTopic(String),
+    /// There is no handler for this topic.
     #[error("The topic `{0:?}` does not have a handler.")]
     MissingHandler(String),
 
-}
-
-#[derive(Debug)]
-pub struct MissingHandler {
-    topic: Topic,
-}
-
-impl std::fmt::Display for MissingHandler {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,
-           "The topic `{:?}` does not have a handler.",
-            self.topic
-        )
-    }
 }
 
 /// Handler for forwarding incoming messages to the correct destination.
@@ -134,8 +99,10 @@ impl std::fmt::Display for MissingHandler {
 /// This includes chained requests, which will receive the output directly,
 /// as well as calling new handlers.
 pub struct IncomingHandler {
+    /// Topics which are being listened to.
     topics: AsyncMutex<HashMap<String, Option<Responder>>>,
 
+    /// Incoming message handlers, by topic.
     handlers: HashMap<Topic, Arc<dyn Handler>>,
 }
 
@@ -156,6 +123,17 @@ impl IncomingHandler {
     ///
     /// The future also returns a `Result` for errors with parsing or if
     /// it times out. See [`ResponseError`].
+    ///
+    /// **NOTE:** You must already be subscribed to the listening topic
+    /// in the MQTT client, otherwise this `IncomingHandler` receives
+    /// nothing. See [`handle`](#method.handle)
+    ///
+    /// # Arguments
+    ///
+    /// - `topic` - The topic on which to expect the response.
+    /// - `expects_encrypted` - Whether or not the response message
+    /// is expected to be encrypted.
+    /// - `timeout` - How long to wait before returning an error.
     pub(crate) async fn listen<M: MessageTrait>(&self,
         topic: String,
         expects_encrypted: bool,
@@ -164,6 +142,7 @@ impl IncomingHandler {
         let future = ResponseFuture::new(expects_encrypted, timeout);
         let responder = Responder::new(future.inner.clone());
 
+        // Create a task to timeout the awaiting future.
         let clone = responder.clone();
         tokio::spawn(async move {
             tokio::time::sleep(timeout).await;
@@ -197,6 +176,8 @@ impl IncomingHandler {
     pub async fn handle(&self, message: Publish, client: Client) -> crate::Result<()> {
         let mut topics = self.topics.lock().await;
 
+        // Take ownership of responder for this topic, which has not yet
+        // timed out.
         let responder = topics.get_mut(&message.topic)
             .map(|r| r.take()).flatten()
             .filter(|r| r.inner.wait_start_time.elapsed() <= r.inner.timeout);
@@ -212,6 +193,7 @@ impl IncomingHandler {
                 .ok_or(HandlerError::MissingHandler(message.topic.clone()))?
                 .clone();
 
+            // Spawn handling to a new task, to not block the current task.
             tokio::spawn(async move {
                 handler.handle(Message::new(message.payload), client).await;
             });
@@ -221,26 +203,34 @@ impl IncomingHandler {
     }
 }
 
+/// A response has been received.
 const RESPONSE_STATE: u8 = 1;
+/// The future has timed out.
 const TIMED_OUT_STATE: u8 = 2;
 
 struct Inner {
-    received: AtomicU8,
+    /// State of the future. See [`RESPONSE_STATE`] and [`TIMED_OUT_STATE`].
+    state: AtomicU8,
+    /// Container for the incoming message bytes.
     cell: UnsafeCell<Option<Bytes>>,
 
+    /// A waker object to resume the task.
     waker: BlockingMutex<Option<Waker>>,
 
+    // todo: maybe just add these and check against current time?
+    // check benchmarks on this, tho its probably negligible anyway.
     wait_start_time: Instant,
     timeout: Duration,
 }
 
+// Bytes are Send and Sync so this is fine.
 unsafe impl Send for Inner {}
 unsafe impl Sync for Inner {}
 
 impl Inner {
     fn new(timeout: Duration) -> Self {
         Self {
-            received: AtomicU8::new(0),
+            state: AtomicU8::new(0),
             cell: UnsafeCell::new(None),
             waker: BlockingMutex::new(None),
             wait_start_time: Instant::now(),
@@ -259,18 +249,35 @@ impl Responder {
         Self { inner }
     }
 
+    // todo: make this more safe
+    // technically this could cause some problems,
+    // we should probably move `wake` and `wake_timeout`
+    // into separate structs and make them consuming,
+    // as well as removing the `Clone` trait, but since
+    // this is internal logic, and I'm only using it in one
+    // place, and it's fine in that use case, I'm gonna
+    // be lazy and keep it as it is.
+
     fn wake(&self, bytes: Bytes) {
+        // Update the contents of the cell.
+        // SAFETY: this is safe as the future does not
+        // access the inner cell until the `RESPONSE_STATE` bit
+        // is set.
         unsafe { *self.inner.cell.get() = Some(bytes); }
 
-        self.inner.received.fetch_or(RESPONSE_STATE, Ordering::Release);
+        // Set the `RESPONSE_STATE` bit.
+        self.inner.state.fetch_or(RESPONSE_STATE, Ordering::Release);
 
+        // Wake the task.
         self.inner.waker.lock()
             .take().map(|w| w.wake());
     }
 
     fn wake_timeout(&self) {
-        self.inner.received.fetch_or(TIMED_OUT_STATE, Ordering::Relaxed);
+        // Set the `TIMED_OUT_STATE` bit.
+        self.inner.state.fetch_or(TIMED_OUT_STATE, Ordering::Relaxed);
 
+        // Wake the task.
         self.inner.waker.lock()
             .take().map(|w| w.wake());
     }
@@ -279,8 +286,12 @@ impl Responder {
 /// A future waiting for a response message `M`.
 pub struct ResponseFuture<M: MessageTrait> {
     inner: Arc<Inner>,
+    /// Whether the future expects to receive an
+    /// encrypted message. Used for auto parsing.
     expects_encrypted: bool,
 
+    /// Phantom to store the data type this
+    /// future returns.
     _phantom: PhantomData<MessageVariant<M>>
 }
 
@@ -299,17 +310,20 @@ impl<M: MessageTrait> Future for ResponseFuture<M> {
     type Output = Result<MessageVariant<M>, ResponseError>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let state = self.inner.received.load(Ordering::Acquire);
+        let state = self.inner.state.load(Ordering::Acquire);
 
         if state & TIMED_OUT_STATE != 0 {
             return Poll::Ready(Err(ResponseError::TimedOut));
         }
 
         if state & RESPONSE_STATE != 0 {
+            // Take ownership of bytes.
+            // Technically not necessary, but idc.
             let bytes = unsafe { self.inner.cell.get().as_mut().unwrap().take().unwrap() };
 
             let mut stream = CodedInputStream::from_tokio_bytes(&bytes);
 
+            // Deserialise/parse message.
             let message: Result<MessageVariant<M>, ResponseError> = if self.expects_encrypted {
                 EncryptedMessageStruct::parse_from(&mut stream)
                     .map(|m| EncryptedMessage::from(m))

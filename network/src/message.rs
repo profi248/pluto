@@ -12,11 +12,44 @@ use aes_gcm::{ Aes256Gcm, NewAead, aead::Aead };
 
 use std::marker::PhantomData;
 
-use crate::{ key::Keys, handler::Message, prelude::* };
+use bytes::Bytes;
+
+use crate::{ key::Keys, prelude::* };
+use crate::protos::shared::EncryptedMessage as EncryptedMessageStruct;
 
 pub type Nonce = [u8; 12];
 pub type Salt = [u8; 32];
 pub type Key = [u8; 32];
+
+
+/// A wrapper around raw message bytes.
+///
+/// Contains methods to parse the message into given
+/// types.
+///
+/// This is necessary as [`Handler`]s need to be
+/// given messages dynamically.
+pub struct Message {
+    bytes: Bytes
+}
+
+impl Message {
+    pub(crate) fn new(bytes: Bytes) -> Self {
+        Self { bytes }
+    }
+
+    /// Parses this message as unencrypted.
+    pub fn unencrypted<M: MessageTrait>(self) -> StdResult<M, Self> {
+        M::parse_from_tokio_bytes(&self.bytes).map_err(|_| self)
+    }
+
+    /// Parses this message as encrypted.
+    pub fn encrypted<M: MessageTrait>(self) -> StdResult<EncryptedMessage<M>, Self> {
+        EncryptedMessageStruct::parse_from_tokio_bytes(&self.bytes)
+            .map(Into::into)
+            .map_err(|_| self)
+    }
+}
 
 /// A wrapper around encrypted or unencrypted messages.
 pub enum MessageVariant<M: MessageTrait> {
@@ -66,16 +99,16 @@ impl<M: MessageTrait> From<M> for MessageVariant<M> {
     }
 }
 
-/// A wrapper around an [`EncryptedMessage`](crate::protos::shared::EncryptedMessage) proto struct.
+/// A wrapper around an [`EncryptedMessage`](EncryptedMessageStruct) proto struct.
 ///
 /// Provides helper methods to decrypt messages and return inner message type.
 pub struct EncryptedMessage<M: MessageTrait> {
-    inner: crate::protos::shared::EncryptedMessage,
+    inner: EncryptedMessageStruct,
     _phantom: PhantomData<M>,
 }
 
-impl<M: MessageTrait> From<crate::protos::shared::EncryptedMessage> for EncryptedMessage<M> {
-    fn from(m: crate::protos::shared::EncryptedMessage) -> Self {
+impl<M: MessageTrait> From<EncryptedMessageStruct> for EncryptedMessage<M> {
+    fn from(m: EncryptedMessageStruct) -> Self {
         Self {
             inner: m,
             _phantom: PhantomData
