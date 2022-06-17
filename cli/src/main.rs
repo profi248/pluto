@@ -5,12 +5,14 @@ use std::collections::HashMap;
 
 use std::sync::Arc;
 
-use pluto_network::key::{ Keys, Mnemonic, Seed };
+use pluto_network::key::Keys;
 use pluto_network::{
     topics::*, protos::auth::*,
 };
 use pluto_network::prelude::*;
 use rumqttc::{ Event, Incoming, QoS };
+use pluto_node::db::Database;
+use pluto_node::auth;
 
 use pluto_node::node::Node;
 
@@ -18,17 +20,16 @@ use pluto_node::node::Node;
 async fn main() {
     pluto_node::utils::setup_dirs();
     log_init();
-    pluto_node::db::Database::run_migrations().unwrap();
-
-    let keys = Keys::generate();
+    Database::run_migrations().unwrap();
 
     let handler = Arc::new(IncomingHandler::new(HashMap::new()));
-    let client_id = pluto_network::utils::get_node_topic_id(keys.public_key().as_bytes().to_vec());
+    let client_id = auth::get_mqtt_client_id();
 
-    let (node, mut event_loop) = Node::new("localhost", 1883, client_id, handler.clone()).await.expect("Error creating node");
+    let (node, mut event_loop) = Node::new(pluto_node::config::COORDINATOR_HOST,
+                                     pluto_node::config::COORDINATOR_PORT,
+                                     client_id, handler.clone()).await.expect("Error creating node");
 
     let client = node.client().clone();
-
     tokio::spawn(async move {
         loop {
             let event = match event_loop.poll().await {
@@ -41,26 +42,53 @@ async fn main() {
 
             if let Event::Incoming(Incoming::Publish(event)) = event {
                 trace!("{:?}", event);
-                if let Err(e) = handler.handle(event, client.clone()).await {
+                if let Err(e) = handler.handle(event, node.client().clone()).await {
                     error!("{e:?}")
                 }
             }
         }
     });
 
-    // let mut a = AuthNodeInit::default();
-    // a.pubkey = vec![0x1a; 5];
-    // debug!("{:?}", a);
-    // node.client().send_and_listen(
-    //     topic!(Coordinator::Auth).topic(),
-    //     a,
-    //     QoS::AtMostOnce,
-    //     false,
-    //     std::time::Duration::from_secs(10)
 
-    // ).await.expect("error");
+    let keys;
 
-    pluto_node::auth::register_node(node.client(), &keys).await.unwrap();
+    if Database::get_initial_setup_done().unwrap() {
+        debug!("Node already set up.");
+        keys = auth::get_saved_keys().unwrap();
+        let node_topic_id = pluto_network::utils::
+            get_node_topic_id(keys.public_key().as_bytes().to_vec());
+
+        client.client().subscribe(format!("node/{node_topic_id}/#"), QoS::AtMostOnce).await.unwrap();
+    } else {
+        match inquire::Confirm::new("Do you want to restore a existing passphrase?").prompt() {
+            Ok(true) => {
+                match inquire::Text::new("Enter your passphrase: ").prompt() {
+                    Ok(passphrase) => {
+                        keys = auth::restore_keys_from_passphrase(passphrase).unwrap();
+                        auth::save_credentials_to_storage(&keys).unwrap();
+                        info!("Keys from passphrase restored.");
+                    },
+                    Err(_) => todo!()
+                }
+            },
+            Ok(false) => {
+                info!("Registering node to the network.");
+                keys = Keys::generate();
+
+                let node_topic_id = pluto_network::utils::
+                get_node_topic_id(keys.public_key().as_bytes().to_vec());
+
+                client.client().subscribe(format!("node/{node_topic_id}/#"), QoS::AtMostOnce).await.unwrap();
+                auth::register_node(&client, &keys).await.unwrap();
+            },
+            Err(_) => todo!(),
+        }
+    }
+
+
+    info!("Node is ready.");
+    let passphrase = keys.seed().to_mnemonic().to_passphrase();
+    info!("Passphrase: {passphrase}");
 
     loop {}
 }
@@ -81,14 +109,14 @@ fn log_init() {
         .expect("Could not open/create file.");
 
     let file_filter = Targets::new()
-        .with_default(LevelFilter::INFO)
+        .with_default(LevelFilter::DEBUG)
         .with_targets([
             ("pluto_cli", LevelFilter::DEBUG),
             ("pluto_network", LevelFilter::DEBUG),
         ]);
 
     let stdout_filter = Targets::new()
-        .with_default(LevelFilter::INFO)
+        .with_default(LevelFilter::DEBUG)
         .with_targets([
             ("pluto_cli", LevelFilter::INFO),
             ("pluto_network", LevelFilter::INFO),

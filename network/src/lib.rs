@@ -14,7 +14,7 @@ pub mod utils;
 
 pub mod protos;
 
-mod error {
+pub mod error {
     pub use rumqttc::ClientError as MqttError;
     pub use protobuf::Error as ProtobufError;
 

@@ -75,4 +75,9 @@ impl Client {
 
         Ok(response_future.await?)
     }
+
+    /// Return MQTT AsyncClient.
+    pub fn client(&self) -> &AsyncClient {
+        &self.client
+    }
 }

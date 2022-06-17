@@ -21,4 +21,19 @@ impl Database {
     pub fn run_migrations() -> Option<()> {
         embedded_migrations::run(&Self::connect()).ok()
     }
+
+    pub fn set_initial_setup_done(value: bool) -> Option<()> {
+        Self::set_by_key("setup_completed".to_owned(),
+                         vec![value as u8]).ok()
+    }
+
+    pub fn get_initial_setup_done() -> Option<bool> {
+        match Self::get_by_key("setup_completed".to_owned()) {
+            Ok(value) => {
+                let value = value.unwrap_or(vec![0]);
+                Some(value.len() == 1 && value[0] == 0x1)
+            }
+            Err(_) => None,
+        }
+    }
 }

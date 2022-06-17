@@ -14,6 +14,7 @@ diesel_migrations = "1.4.0"
 
 # Cryptography
 x25519-dalek = "1.2.0"
+getrandom = "0.2.6"
 
 # Logging
 tracing = "0.1.34"

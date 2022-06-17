@@ -1,4 +1,4 @@
-mod mnemonic; pub use mnemonic::*;
+pub mod mnemonic; pub use mnemonic::*;
 mod seed; pub use seed::*;
 
 use rand_chacha::{ ChaCha20Rng,
@@ -44,6 +44,12 @@ impl Keys {
             public_key,
             private_key,
         }
+    }
+
+    pub fn from_seed(seed: Seed) -> Self {
+        let entropy = seed.entropy();
+        
+        Self::from_entropy(*entropy)
     }
 
     /// Returns the [X25519](x25519_dalek) [public key](PublicKey).

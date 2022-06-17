@@ -11,7 +11,6 @@ pub mod handlers;
 mod logic;
 mod coordinator;
 
-use std::collections::HashMap;
 use rumqttc::{ Event, Packet };
 use x25519_dalek::{ StaticSecret, PublicKey };
 

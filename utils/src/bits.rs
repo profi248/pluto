@@ -156,8 +156,6 @@ fn test_iter_n_bits() {
     let vec: Vec<u16> = vec![0b00000_101_0111_0011, 0b00000_011_0101_1000];
     let mut iter = vec.iter_n_bits(11);
 
-    let mut counter = 0;
-
     macro_rules! assert_values {
         ($($b:expr),+) => {
             $(

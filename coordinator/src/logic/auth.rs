@@ -15,7 +15,7 @@ impl Coordinator {
         if pubkey.len() != PUBKEY_LEN { return Err(AuthError::InvalidPubkey) }
 
         let node = match db.get_node_from_pubkey(pubkey.clone()).await {
-            Ok(Some(node)) => { return Err(AuthError::AlreadyRegistered); },
+            Ok(Some(_)) => { return Err(AuthError::AlreadyRegistered); },
             Ok(None) => {
                 match db.add_node(pubkey).await {
                     Ok(node) => node,

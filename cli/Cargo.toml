@@ -9,10 +9,11 @@ edition = "2021"
 pluto-network = { path = "../network" }
 pluto-node = { path = "../node" }
 
-# Database
-
 # Async
 tokio = { version = "1.18.2", features = [ "rt-multi-thread", "macros", "sync", "signal" ] }
+
+# CLI
+inquire = "0.2.1"
 
 # Logging
 tracing = "0.1.34"
