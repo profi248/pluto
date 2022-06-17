@@ -65,6 +65,12 @@ async fn main() {
                 match inquire::Text::new("Enter your passphrase: ").prompt() {
                     Ok(passphrase) => {
                         keys = auth::restore_keys_from_passphrase(passphrase).unwrap();
+
+                        let node_topic_id = pluto_network::utils::
+                            get_node_topic_id(keys.public_key().as_bytes().to_vec());
+
+                        client.client().subscribe(format!("node/{node_topic_id}/#"), QoS::AtMostOnce).await.unwrap();
+
                         auth::save_credentials_to_storage(&keys).unwrap();
                         info!("Keys from passphrase restored.");
                     },
@@ -76,7 +82,7 @@ async fn main() {
                 keys = Keys::generate();
 
                 let node_topic_id = pluto_network::utils::
-                get_node_topic_id(keys.public_key().as_bytes().to_vec());
+                    get_node_topic_id(keys.public_key().as_bytes().to_vec());
 
                 client.client().subscribe(format!("node/{node_topic_id}/#"), QoS::AtMostOnce).await.unwrap();
                 auth::register_node(&client, &keys).await.unwrap();
