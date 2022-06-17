@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+message ErrorResponse {
+  enum ErrorType {
+    BAD_ERROR = 0;
+    SERVER_ERROR = 1;
+    BAD_REQUEST = 2;
+    CRYPTO_ERROR = 3;
+    PUBKEY_LENGTH_INVALID = 4;
+    ALREADY_REGISTERED = 5;
+  };
+
+  ErrorType error = 2;
+  string message = 3;
+}
+
+message EncryptedMessage {
+  // 0xaa 0xbb
+  bytes _encrypted = 1;
+  bytes ephemeral_pubkey = 2;
+  bytes sender_pubkey = 3;
+  bytes salt = 4;
+  bytes nonce = 5;
+  bytes inner_message = 6;
+}

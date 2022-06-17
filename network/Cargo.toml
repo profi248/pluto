@@ -17,7 +17,10 @@ protobuf = { version = "3.0.3", features = [ "with-bytes" ] }
 tracing = "0.1.34"
 
 # Cryptography
-ring = "0.16.20"
+x25519-dalek = "1.2.0"
+hkdf = "0.12.3"
+sha2 = "0.10.2"
+aes-gcm = "0.9.4"
 rand_chacha = "0.3.1"
 getrandom = "0.2.6"
 
@@ -29,6 +32,7 @@ tokio = { version = "1.19.2", features = [ "sync" ] }
 bytes = "1.1.0"
 regex = "1.5.6"
 async-trait = "0.1.56"
+base64 = "0.13.0"
 
 [build-dependencies]
 protobuf-codegen = "3.0.3"

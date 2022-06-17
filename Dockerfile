@@ -20,7 +20,7 @@ RUN cargo build --release --bin pluto-coordinator
 # We do not need the Rust toolchain to run the binary!
 FROM debian:bullseye-slim AS runtime
 WORKDIR app
-RUN apt-get update && apt-get install libpq5 -y && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install libpq5 libsqlite3-0 -y && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/pluto-coordinator /app
 COPY .env /app
 ENTRYPOINT ["/app/pluto-coordinator"]

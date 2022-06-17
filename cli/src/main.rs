@@ -2,31 +2,34 @@
 extern crate tracing;
 
 use std::collections::HashMap;
-use rumqttc::Event;
 
 use std::sync::Arc;
 
-use pluto_network::node::{
-    key::{ Keys, Mnemonic, Seed },
-    Node,
-};
+use pluto_network::key::Keys;
 use pluto_network::{
     topics::*, protos::auth::*,
 };
 use pluto_network::prelude::*;
-use rumqttc::{ QoS };
+use rumqttc::{ Event, Incoming, QoS };
+use pluto_node::db::Database;
+use pluto_node::auth;
 
-pub const PLUTO_DIR: &'static str = ".pluto";
-pub const LOG_FILE: &'static str = "log.txt";
+use pluto_node::node::Node;
 
 #[tokio::main]
 async fn main() {
-    setup_dirs();
+    pluto_node::utils::setup_dirs();
     log_init();
+    Database::run_migrations().unwrap();
 
     let handler = Arc::new(IncomingHandler::new(HashMap::new()));
-    let (node, mut event_loop) = Node::new("localhost", 1883, handler).await.expect("Error creating node");
+    let client_id = auth::get_mqtt_client_id();
 
+    let (node, mut event_loop) = Node::new(pluto_node::config::COORDINATOR_HOST,
+                                     pluto_node::config::COORDINATOR_PORT,
+                                     client_id, handler.clone()).await.expect("Error creating node");
+
+    let client = node.client().clone();
     tokio::spawn(async move {
         loop {
             let event = match event_loop.poll().await {
@@ -37,35 +40,63 @@ async fn main() {
                 }
             };
 
-            if let Event::Incoming(event) = event {
+            if let Event::Incoming(Incoming::Publish(event)) = event {
                 trace!("{:?}", event);
+                if let Err(e) = handler.handle(event, node.client().clone()).await {
+                    error!("{e:?}")
+                }
             }
         }
     });
 
-    let mut a = AuthNodeInit::default();
-    a.pubkey = vec![0x1a; 5];
-    debug!("{:?}", a);
-    node.client().send(
-        topic!(Coordinator::Auth).topic(),
-        a,
-        QoS::AtMostOnce,
-        false,
-        std::time::Duration::from_secs(10)
-    ).await.expect("error");
 
-    let keys = Keys::generate();
+    let keys;
+
+    if Database::get_initial_setup_done().unwrap() {
+        debug!("Node already set up.");
+        keys = auth::get_saved_keys().unwrap();
+        let node_topic_id = pluto_network::utils::
+            get_node_topic_id(keys.public_key().as_bytes().to_vec());
+
+        client.client().subscribe(format!("node/{node_topic_id}/#"), QoS::AtMostOnce).await.unwrap();
+    } else {
+        match inquire::Confirm::new("Do you want to restore a existing passphrase?").prompt() {
+            Ok(true) => {
+                match inquire::Text::new("Enter your passphrase: ").prompt() {
+                    Ok(passphrase) => {
+                        keys = auth::restore_keys_from_passphrase(passphrase).unwrap();
+
+                        let node_topic_id = pluto_network::utils::
+                            get_node_topic_id(keys.public_key().as_bytes().to_vec());
+
+                        client.client().subscribe(format!("node/{node_topic_id}/#"), QoS::AtMostOnce).await.unwrap();
+
+                        auth::save_credentials_to_storage(&keys).unwrap();
+                        info!("Keys from passphrase restored.");
+                    },
+                    Err(_) => todo!()
+                }
+            },
+            Ok(false) => {
+                info!("Registering node to the network.");
+                keys = Keys::generate();
+
+                let node_topic_id = pluto_network::utils::
+                    get_node_topic_id(keys.public_key().as_bytes().to_vec());
+
+                client.client().subscribe(format!("node/{node_topic_id}/#"), QoS::AtMostOnce).await.unwrap();
+                auth::register_node(&client, &keys).await.unwrap();
+            },
+            Err(_) => todo!(),
+        }
+    }
+
+
+    info!("Node is ready.");
+    let passphrase = keys.seed().to_mnemonic().to_passphrase();
+    info!("Passphrase: {passphrase}");
 
     loop {}
-}
-
-fn setup_dirs() {
-    let mut path = dirs::home_dir().unwrap();
-    path.push(PLUTO_DIR);
-
-    if !path.exists() { std::fs::create_dir(&path).unwrap(); }
-
-    if !path.is_dir() { panic!("{} is a file.", PLUTO_DIR); }
 }
 
 fn log_init() {
@@ -74,9 +105,7 @@ fn log_init() {
     use tracing_subscriber::fmt::Layer;
     use tracing_subscriber::prelude::*;
 
-    let mut path = dirs::home_dir().unwrap();
-    path.push(PLUTO_DIR);
-    path.push(LOG_FILE);
+    let path = pluto_node::utils::get_log_file_path();
 
     let log_file = std::fs::File::options()
         .create(true)
@@ -86,14 +115,14 @@ fn log_init() {
         .expect("Could not open/create file.");
 
     let file_filter = Targets::new()
-        .with_default(LevelFilter::INFO)
+        .with_default(LevelFilter::DEBUG)
         .with_targets([
             ("pluto_cli", LevelFilter::DEBUG),
             ("pluto_network", LevelFilter::DEBUG),
         ]);
 
     let stdout_filter = Targets::new()
-        .with_default(LevelFilter::INFO)
+        .with_default(LevelFilter::DEBUG)
         .with_targets([
             ("pluto_cli", LevelFilter::INFO),
             ("pluto_network", LevelFilter::INFO),

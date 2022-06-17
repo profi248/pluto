@@ -1,6 +1,8 @@
 use super::{ Mnemonic, Error };
 
-use pluto_utils::bits::{ BitsIter, IterBits };
+use sha2::{ Sha256, Digest };
+
+use pluto_utils::bits::{ IterBits };
 
 pub const SEED_NUM_BYTES: usize = 32;
 pub const SEED_NUM_BITS: usize = SEED_NUM_BYTES * 8;
@@ -76,21 +78,21 @@ impl Seed {
     /// Returns [`InvalidChecksum`](Error::InvalidChecksum)
     /// error if it doesn't match.
     pub fn verify_checksum(&self) -> Result<(), Error> {
-        let hash = ring::digest::digest(&ring::digest::SHA256, &self.entropy);
+        let hash = Sha256::digest(&self.entropy);
 
-        if hash.as_ref()[0] != self.checksum {
+        if hash[0] != self.checksum {
             Err(Error::InvalidChecksum)
         } else { Ok(()) }
     }
 
     /// Converts random bytes into a [`Seed`], and calculates its checksum.
     pub fn from_entropy(entropy: Entropy) -> Seed {
-        let hash = ring::digest::digest(&ring::digest::SHA256, &entropy);
+        let hash = Sha256::digest(&entropy);
         assert_eq!(CHECKSUM_NUM_BITS, 8, "checksum sizes other than 8 bits are currently not supported");
 
         Seed {
             entropy,
-            checksum: hash.as_ref()[0]
+            checksum: hash[0]
         }
     }
 

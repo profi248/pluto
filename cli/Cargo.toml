@@ -7,13 +7,14 @@ edition = "2021"
 
 [dependencies]
 pluto-network = { path = "../network" }
-
-# Database
+pluto-node = { path = "../node" }
 
 # Async
 tokio = { version = "1.18.2", features = [ "rt-multi-thread", "macros", "sync", "signal" ] }
 
+# CLI
+inquire = "0.2.1"
+
 # Logging
 tracing = "0.1.34"
 tracing-subscriber = { version = "0.3.11", features = [ "local-time", "parking_lot" ] }
-dirs = "4.0.0"

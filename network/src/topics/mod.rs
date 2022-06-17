@@ -1,6 +1,7 @@
 mod auth;
 
-use rumqttc::AsyncClient;
+use protobuf::Message as MessageTrait;
+
 use pluto_macros::define_topics;
 
 use crate::protos::auth::AuthNodeInit;
@@ -14,9 +15,13 @@ define_topics! {
     }
 }
 
-pub trait Request: protobuf::Message {
-    type Response: protobuf::Message;
+/// Defines that a message type is a request, and expects
+/// a given message type as a response.
+pub trait Request: MessageTrait {
+    /// The response message type expected by this request message.
+    type Response: MessageTrait;
 
+    /// Simple function to construct a default response object.
     fn response() -> Self::Response {
         Default::default()
     }

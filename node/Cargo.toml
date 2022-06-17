@@ -1,5 +1,5 @@
 [package]
-name = "node"
+name = "pluto-node"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,6 +8,19 @@ edition = "2021"
 [dependencies]
 pluto-network = { path = "../network" }
 
+# Database
+diesel = { version = "1.4.8", features = [ "sqlite", "chrono" ] }
+diesel_migrations = "1.4.0"
+
+# Cryptography
+x25519-dalek = "1.2.0"
+getrandom = "0.2.6"
+
+# Logging
+tracing = "0.1.34"
+
 # Utils
 lazy_static = "1.4.0"
 async-trait = "0.1.56"
+dirs = "4.0.0"
+base64 = "0.13.0"
