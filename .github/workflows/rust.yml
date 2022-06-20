@@ -19,12 +19,33 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
-  build_client:
-    runs-on: ${{ matrix.os }}
-    name: Build and test client on ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]
+  
+  build_client_windows:
+    runs-on: windows-latest
+    name: Build and test client on Windows
+    env: 
+      SQLITE3_LIB_DIR: "C:\\sqlite"
+    steps:
+    - name: "Install SQLite"
+      shell: cmd
+      run: |
+          mkdir C:\sqlite
+          CD /D C:\sqlite
+          curl -fsS --retry 3 --retry-connrefused -o sqlite3.zip https://sqlite.org/2022/sqlite-dll-win64-x64-3380500.zip
+          7z e sqlite3.zip -y
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          lib /machine:x64 /def:sqlite3.def /out:sqlite3.lib
+          set PATH=%PATH%;C:\sqlite
+          echo "##vso[task.setvariable variable=PATH;]%PATH%;C:\sqlite"
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose --workspace --exclude pluto-coordinator
+    - name: Run tests
+      run: cargo test --verbose --workspace --exclude pluto-coordinator
+  
+  build_client_mac:
+    runs-on: macos-latest
+    name: Build and test client on macOS
     steps:
     - uses: actions/checkout@v3
     - name: Build
