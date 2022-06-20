@@ -8,6 +8,8 @@ message ErrorResponse {
     CRYPTO_ERROR = 3;
     PUBKEY_LENGTH_INVALID = 4;
     ALREADY_REGISTERED = 5;
+    INVALID_BACKUP_JOB = 6;
+    PUBKEY_NOT_FOUND = 7;
   };
 
   ErrorType error = 2;

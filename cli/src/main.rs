@@ -96,6 +96,9 @@ async fn main() {
     let passphrase = keys.seed().to_mnemonic().to_passphrase();
     info!("Passphrase: {passphrase}");
 
+    let remote_jobs = pluto_node::backup_job::get_remote_backup_jobs(&client, &keys).await.unwrap();
+    debug!("backup jobs: {remote_jobs:?}");
+
     loop {}
 }
 
@@ -124,7 +127,7 @@ fn log_init() {
     let stdout_filter = Targets::new()
         .with_default(LevelFilter::DEBUG)
         .with_targets([
-            ("pluto_cli", LevelFilter::INFO),
+            ("pluto_cli", LevelFilter::DEBUG),
             ("pluto_network", LevelFilter::INFO),
         ]);
 

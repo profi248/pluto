@@ -20,6 +20,7 @@ create table backup_job (
         constraint backup_job_node_node_id_fk
         references node
         on update restrict on delete restrict,
+    local_job_id  int not null,
     created       timestamptz not null,
     last_ran      timestamptz,
     total_size    bigint,
@@ -31,6 +32,9 @@ create index backup_job_node_id_index
 
 create unique index backup_job_node_id_name_uindex
     on backup_job (node_id, name);
+
+create unique index backup_job_node_id_local_job_id_uindex
+    on backup_job (node_id, local_job_id);
 
 -- nodes storage mappings
 create table node_storage_mapping (

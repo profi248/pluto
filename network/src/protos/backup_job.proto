@@ -1,0 +1,41 @@
+syntax = "proto3";
+import "shared.proto";
+
+// represents a single backup job
+message BackupJobItem {
+  uint32 job_id = 1;
+  string name = 2;
+  // UNIX timestamp of job creation
+  uint64 created = 3;
+  // UNIX timestamps of last execution
+  uint64 last_ran = 4;
+}
+
+// reply to adding/modifying a backup job
+message BackupJobCoordinatorPutResponse {
+  message Success {
+    bool success = 1;
+  }
+
+  oneof put_status {
+    ErrorResponse error = 1;
+    Success success = 2;
+  }
+}
+
+// request for backup job list
+message BackupJobNodeListRequest {
+
+}
+
+// reply to backup job list request
+message BackupJobCoordinatorListResponse {
+  message List {
+    repeated BackupJobItem backup_jobs = 1;
+  }
+
+  oneof list_status {
+    ErrorResponse error = 1;
+    List backup_jobs = 2;
+  }
+}

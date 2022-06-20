@@ -1,5 +1,5 @@
 mod schema;
-mod models;
+pub mod models;
 
 use diesel::{ Connection, RunQueryDsl, SqliteConnection };
 

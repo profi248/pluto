@@ -1,17 +1,23 @@
 mod auth;
+mod backup_job;
 
 use protobuf::Message as MessageTrait;
 
 use pluto_macros::define_topics;
 
-use crate::protos::auth::AuthNodeInit;
+use crate::protos::auth::*;
+use crate::protos::backup_job::*;
 
 define_topics! {
     Coordinator {
-        Auth -> "coordinator/auth" => AuthNodeInit
+        Auth -> "coordinator/auth" => AuthNodeInit,
+        ListBackupJobs -> "coordinator/list_jobs" => BackupJobNodeListRequest,
+        PutBackupJob -> "coordinator/pub_job" => BackupJobItem
     },
     Node {
-        Auth -> "node/{id}/auth"
+        Auth -> "node/{id}/auth",
+        ListBackupJobs -> "node/{id}/list_jobs",
+        PutBackupJob -> "node/{id}/put_job"
     }
 }
 

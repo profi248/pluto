@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod backup_job;
 
 use pluto_network::{ topics::Topic, handler::Handler };
 use std::{ sync::Arc, collections::HashMap };
@@ -18,6 +19,7 @@ lazy_static::lazy_static! {
         __use_handlers! { h,
             // register implemented message handlers here
             auth::AuthHandler,
+            backup_job::BackupJobListHandler
         }
 
         h

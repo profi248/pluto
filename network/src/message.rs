@@ -135,11 +135,13 @@ impl<M: MessageTrait> EncryptedMessage<M> {
 
     /// Decrypts the message into the inner message type,
     /// verifying that the owner of the public key encrypted this message.
-    pub fn decrypt_authenticated(self, recipient_private_key: &StaticSecret, sender_public_key: &PublicKey) -> Option<M> {
+    pub fn decrypt_authenticated(self, recipient_private_key: &StaticSecret) -> Option<(M, PublicKey)> {
         let ephemeral_public_key: Key = self.inner.ephemeral_pubkey.as_slice().try_into().ok()?;
+        let sender_public_key: Key = self.inner.sender_pubkey.as_slice().try_into().ok()?;
+        let sender_public_key: PublicKey = PublicKey::from(sender_public_key);
 
         let symmetric_key = decapsulate_authenticated(
-            sender_public_key,
+            &sender_public_key,
             ephemeral_public_key.into(),
             recipient_private_key,
             self.inner.salt.as_slice().try_into().ok()?,
@@ -147,7 +149,9 @@ impl<M: MessageTrait> EncryptedMessage<M> {
 
         let bytes = decrypt(&self.inner.inner_message, self.inner.nonce.try_into().ok()?, symmetric_key)?;
 
-        Message::new(bytes.into()).unencrypted().ok()
+        let decrypted_msg = Message::new(bytes.into()).unencrypted().ok()?;
+
+        Some((decrypted_msg, sender_public_key))
     }
 
     /// Serialises the inner message to bytes.
