@@ -21,7 +21,7 @@ jobs:
       run: cargo test --verbose
   
   build_client_windows:
-    runs-on: windows-latest
+    runs-on: windows-2019
     name: Build and test client on Windows
     env: 
       SQLITE3_LIB_DIR: "C:\\sqlite"
