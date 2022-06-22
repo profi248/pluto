@@ -3,7 +3,7 @@ table! {
         job_id -> Integer,
         name -> Text,
         created -> BigInt,
-        last_run -> Nullable<BigInt>,
+        last_ran -> Nullable<BigInt>,
     }
 }
 

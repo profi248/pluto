@@ -9,5 +9,5 @@ pub struct BackupJob {
     pub job_id: i32,
     pub name: String,
     pub created: i64,
-    pub last_run: Option<i64>,
+    pub last_ran: Option<i64>,
 }

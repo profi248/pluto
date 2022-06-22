@@ -26,6 +26,8 @@ use crate::NodeError::RequestError;
 pub enum NodeError {
     RequestError(Error),
     ResponseError(ErrorType),
+    CryptoError,
+    ParseError,
     ClientError
 }
 

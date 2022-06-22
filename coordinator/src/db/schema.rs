@@ -2,6 +2,7 @@ table! {
     backup_job (backup_job_id) {
         backup_job_id -> Int8,
         node_id -> Int8,
+        local_job_id -> Int4,
         created -> Timestamptz,
         last_ran -> Nullable<Timestamptz>,
         total_size -> Nullable<Int8>,

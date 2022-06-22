@@ -13,6 +13,7 @@ use pluto_network::prelude::*;
 use rumqttc::{ Event, Incoming, QoS };
 use pluto_node::db::Database;
 use pluto_node::auth;
+use pluto_node::db::models::backup_job::BackupJob;
 
 use pluto_node::node::Node;
 
@@ -91,10 +92,17 @@ async fn main() {
         }
     }
 
-
     info!("Node is ready.");
     let passphrase = keys.seed().to_mnemonic().to_passphrase();
     info!("Passphrase: {passphrase}");
+
+    debug!("sending test backup job to coordinator...");
+    pluto_node::backup_job::send_backup_job_to_coordinator(&client, &keys, BackupJob {
+        job_id: 1,
+        name: "x".to_string(),
+        created: 1,
+        last_ran: None
+    }).await.unwrap();
 
     let remote_jobs = pluto_node::backup_job::get_remote_backup_jobs(&client, &keys).await.unwrap();
     debug!("backup jobs: {remote_jobs:?}");

@@ -50,7 +50,7 @@ impl Handler for BackupJobListHandler {
                     }
                 }
             },
-            Err(e) => {
+            Err(_) => {
                 error!("DB failure when getting node from pubkey");
                 Self::send_error(client, &node_pubkey, node_topic_id, &mut response_msg_wrapper,
                                  ErrorType::SERVER_ERROR).await;
@@ -77,7 +77,7 @@ impl Handler for BackupJobListHandler {
 
         for job in backup_jobs {
             let mut msg = BackupJobItem::default();
-            msg.job_id = job.backup_job_id as u32;
+            msg.job_id = job.local_job_id as u32;
             msg.name = job.name;
             msg.created = job.created.timestamp() as u64;
             if let Some(last_ran) = job.last_ran {

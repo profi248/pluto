@@ -2,7 +2,7 @@ create table backup_job (
      job_id   INTEGER not null constraint backup_jobs_pk primary key autoincrement,
      name     TEXT not null,
      created  INTEGER not null,
-     last_run INTEGER
+     last_ran INTEGER
 );
 
 create unique index backup_job_name_uindex
