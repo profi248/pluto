@@ -5,12 +5,12 @@ use rust_embed::RustEmbed;
 use warp::{ http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply };
 
 #[derive(RustEmbed)]
-#[folder = "static"]
+#[folder = "frontend/dist"]
 struct Asset;
 
 pub async fn run() {
     let index_html = warp::path::end().and_then(serve_static_index);
-    let dist = warp::path("dist").and(warp::path::tail()).and_then(serve_static);
+    let dist = warp::path::tail().and_then(serve_static);
 
     let routes =
         index_html
