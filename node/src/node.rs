@@ -28,7 +28,7 @@ pub struct Node {
 impl Node {
     pub async fn new(host: impl Into<String>, port: u16, client_id: String, handler: Arc<IncomingHandler>) -> Result<(Self, EventLoop)> {
         let mut options = MqttOptions::new(client_id.clone(), host, port);
-        options.set_keep_alive(Duration::from_secs(60));
+        options.set_keep_alive(Duration::from_secs(30));
         options.set_credentials(MQTT_NODE_USERNAME, MQTT_NODE_PASSWORD);
 
         let (client, event_loop) = AsyncClient::new(options, 100);

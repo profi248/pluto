@@ -1,6 +1,7 @@
 use rumqttc::{ AsyncClient, QoS };
 
 use std::{ sync::Arc, time::Duration };
+use std::sync::atomic::{ AtomicBool, Ordering };
 
 use crate::topics::Request;
 use crate::prelude::*;
@@ -15,12 +16,13 @@ use crate::prelude::*;
 pub struct Client {
     client: AsyncClient,
     handler: Arc<IncomingHandler>,
+    connection_alive: Arc<AtomicBool>
 }
 
 impl Client {
     /// Constructs a new client with an [MQTT client](AsyncClient) and [message handler](IncomingHandler).
     pub fn new(client: AsyncClient, handler: Arc<IncomingHandler>) -> Self {
-        Self { client, handler }
+        Self { client, handler, connection_alive: Arc::new(AtomicBool::new(false)) }
     }
 
     /// Sends one MQTT message.
@@ -79,5 +81,15 @@ impl Client {
     /// Return MQTT AsyncClient.
     pub fn client(&self) -> &AsyncClient {
         &self.client
+    }
+
+    /// Returns whether the client is still connected to the broker.
+    pub fn is_connected(&self) -> bool {
+        self.connection_alive.load(Ordering::Relaxed)
+    }
+
+    /// Sets the connection status.
+    pub fn set_connection_alive(&self, connection_alive: bool) {
+        self.connection_alive.store(connection_alive, Ordering::Relaxed);
     }
 }

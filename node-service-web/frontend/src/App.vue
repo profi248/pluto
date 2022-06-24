@@ -1,6 +1,34 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import Overview from "@/components/Overview.vue";
+import { ref, onMounted } from 'vue'
+
+let fetch_timer: number | undefined = undefined;
+let status = ref({
+  connected: null,
+});
+
+let client_connected = ref(true);
+
+onMounted(() => {
+  fetchStatus();
+  autoRefreshStatus();
+});
+
+async function fetchStatus() {
+  const url = "http://localhost:8080/api/status";
+  try {
+    status.value = (await (await fetch(url)).json());
+  } catch (e) {
+    client_connected.value = false;
+    alert("Lost connection to client. Is client running?");
+    clearTimeout(fetch_timer);
+  }
+}
+
+async function autoRefreshStatus() {
+  fetch_timer = window.setInterval(fetchStatus, 2000);
+}
+
 </script>
 
 <template>
@@ -17,7 +45,13 @@ import Overview from "@/components/Overview.vue";
         </ul>
       </nav>
       <div class="col-md-3 text-end d-flex align-items-center justify-content-end">
-        <div> <span class="conn-circle connected"></span>Connected</div>
+        <div v-if="client_connected">
+          <div v-if="status.connected === true"><span class="conn-circle connected"></span><span>Connected</span></div>
+          <div v-if="status.connected === false"><span class="conn-circle disconnected"></span><span>Disconnected</span></div>
+        </div>
+        <div v-else>
+          <span class="client-disconnected">Client connection lost!</span>
+        </div>
       </div>
     </header>
   </div>
@@ -81,4 +115,9 @@ import Overview from "@/components/Overview.vue";
     background-color: #f44336;
   }
 }
+
+.client-disconnected {
+  color: #f44336;
+}
+
 </style>

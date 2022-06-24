@@ -18,6 +18,7 @@ type SymmetricKey = [u8; 32];
 ///
 /// These keys are generated from a seeded PRNG ([`ChaCha20`](ChaCha20Rng)), meaning
 /// they can be recreated given the initial entropy.
+#[derive(Clone)]
 pub struct Keys {
     seed: Seed,
     public_key: PublicKey,

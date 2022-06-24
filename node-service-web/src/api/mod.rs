@@ -4,21 +4,26 @@ mod routes;
 use rust_embed::RustEmbed;
 use warp::{ http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply };
 
+use pluto_network::{ client::Client, key::Keys };
+
 #[derive(RustEmbed)]
 #[folder = "frontend/dist"]
 struct Asset;
 
-pub async fn run() {
+pub async fn run(addr: impl Into<std::net::SocketAddr>, client: &Client, keys: &Keys) {
     let index_html = warp::path::end().and_then(serve_static_index);
     let dist = warp::path::tail().and_then(serve_static);
+
+    let client = client.clone();
+    let keys = keys.clone();
 
     let routes =
         index_html
         .or(dist)
 
-        .or(filters::status());
+        .or(filters::status(client, keys));
 
-    warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
+    warp::serve(routes).run(addr).await;
 }
 
 async fn serve_static_index() -> Result<impl Reply, Rejection> {

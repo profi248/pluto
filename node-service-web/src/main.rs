@@ -5,11 +5,12 @@ extern crate tracing;
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use pluto_network::key::Keys;
 
 use pluto_network::prelude::*;
-use pluto_network::rumqttc::{Event, Incoming, QoS};
+use pluto_network::rumqttc::{ Event, Incoming, QoS };
 use pluto_node::auth;
 use pluto_node::db::Database;
 use pluto_node::node::Node;
@@ -28,23 +29,27 @@ async fn main() {
                                            client_id, handler.clone()).await.expect("Error creating node");
 
     let client = node.client().clone();
+    let client_cloned = client.clone();
 
     tokio::spawn(async move {
+        let client = client_cloned;
         loop {
-            let event = match event_loop.poll().await {
-                Ok(e) => e,
+            match event_loop.poll().await {
+                Ok(e) => {
+                    client.set_connection_alive(true);
+                    if let Event::Incoming(Incoming::Publish(event)) = e {
+                        trace!("{:?}", event);
+                        if let Err(e) = handler.handle(event, node.client().clone()).await {
+                            error!("{e:?}")
+                        }
+                    }
+                },
                 Err(e) => {
+                    client.set_connection_alive(false);
                     error!("{e:?}");
-                    break;
+                    tokio::time::sleep(Duration::from_secs(15)).await;
                 }
             };
-
-            if let Event::Incoming(Incoming::Publish(event)) = event {
-                trace!("{:?}", event);
-                if let Err(e) = handler.handle(event, node.client().clone()).await {
-                    error!("{e:?}")
-                }
-            }
         }
     });
 
@@ -71,7 +76,7 @@ async fn main() {
     let passphrase = keys.seed().to_mnemonic().to_passphrase();
     info!("Passphrase: {passphrase}");
 
-    api::run().await;
+    api::run(([127, 0, 0, 1], 8080), &client, &keys).await;
 }
 
 fn log_init() {
