@@ -6,7 +6,6 @@ extern crate tracing;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use warp::Filter;
 use pluto_network::key::Keys;
 
 use pluto_network::prelude::*;

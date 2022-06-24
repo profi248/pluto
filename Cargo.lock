@@ -1108,22 +1108,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pluto-gui"
-version = "0.1.0"
-dependencies = [
- "mime_guess",
- "pluto-network",
- "pluto-node",
- "rust-embed",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "warp",
-]
-
-[[package]]
 name = "pluto-macros"
 version = "0.1.0"
 dependencies = [
@@ -1174,6 +1158,22 @@ dependencies = [
  "pluto-network",
  "tracing",
  "x25519-dalek",
+]
+
+[[package]]
+name = "pluto-node-service-web"
+version = "0.1.0"
+dependencies = [
+ "mime_guess",
+ "pluto-network",
+ "pluto-node",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "warp",
 ]
 
 [[package]]

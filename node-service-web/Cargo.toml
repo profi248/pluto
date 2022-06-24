@@ -1,5 +1,5 @@
 [package]
-name = "pluto-gui"
+name = "pluto-node-service-web"
 version = "0.1.0"
 edition = "2021"
 
