@@ -92,15 +92,16 @@ fn log_init() {
     let file_filter = Targets::new()
         .with_default(LevelFilter::DEBUG)
         .with_targets([
-            ("pluto_cli", LevelFilter::DEBUG),
             ("pluto_network", LevelFilter::DEBUG),
+            ("hyper", LevelFilter::INFO)
         ]);
 
     let stdout_filter = Targets::new()
         .with_default(LevelFilter::DEBUG)
         .with_targets([
-            ("pluto_cli", LevelFilter::DEBUG),
-            ("pluto_network", LevelFilter::INFO),
+            ("pluto_network", LevelFilter::DEBUG),
+            ("rumqtt", LevelFilter::INFO),
+            ("hyper", LevelFilter::INFO)
         ]);
 
     tracing_subscriber::registry()
