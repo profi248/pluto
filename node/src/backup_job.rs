@@ -65,14 +65,33 @@ pub async fn get_remote_backup_jobs(client: &Client, keys: &Keys) -> std::result
     return Ok(job_vec)
 }
 
-pub async fn send_backup_job_to_coordinator(client: &Client, keys: &Keys, job: BackupJob) -> std::result::Result<(), NodeError> {
-    let node_topic_id = get_node_topic_id(keys.public_key().as_bytes().to_vec());
+pub async fn create_or_update_remote_backup_job(client: &Client, keys: &Keys, job: BackupJob) -> std::result::Result<(), NodeError> {
+    let mut msg_wrapper = BackupJobNodePut::default();
 
-    let mut msg = pluto_network::protos::backup_job::BackupJobItem::default();
+    let mut msg = BackupJobItem::default();
     msg.job_id = job.job_id as u32;
     msg.name = job.name;
     msg.created = job.created as u64;
     msg.last_ran = job.last_ran.unwrap_or(0) as u64;
+
+    msg_wrapper.item_or_delete = Some(backup_job_node_put::Item_or_delete::Item(msg));
+
+    send_backup_job_to_coordinator(client, keys, msg_wrapper).await
+}
+
+pub async fn delete_remote_backup_job(client: &Client, keys: &Keys, job_id: u32) -> std::result::Result<(), NodeError> {
+    let mut msg_wrapper = BackupJobNodePut::default();
+
+    let mut msg = backup_job_node_put::DeleteJob::default();
+    msg.job_id = job_id;
+
+    msg_wrapper.item_or_delete = Some(backup_job_node_put::Item_or_delete::Delete(msg));
+
+    send_backup_job_to_coordinator(client, keys, msg_wrapper).await
+}
+
+pub async fn send_backup_job_to_coordinator(client: &Client, keys: &Keys, msg: BackupJobNodePut) -> std::result::Result<(), NodeError> {
+    let node_topic_id = get_node_topic_id(keys.public_key().as_bytes().to_vec());
 
     let response = client.send_and_listen(
         topic!(Coordinator::PutBackupJob).topic(),

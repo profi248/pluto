@@ -76,10 +76,11 @@ impl Database {
             .map_err(Into::into)
     }
 
-    pub async fn delete_backup_job(&self, backup_job_id: i64) -> Result<()> {
+    pub async fn delete_backup_job(&self, node_id: i64, local_job_id: i32) -> Result<()> {
         self.pool.get().await?.interact(move |conn| {
-            diesel::delete(backup_job::table.find(backup_job_id))
-                .execute(conn)
+            diesel::delete(backup_job::table.filter(
+                backup_job::node_id.eq(node_id).and(backup_job::local_job_id.eq(local_job_id))
+            )).execute(conn)
         }).await?
             .map(|_| ())
             .map_err(Into::into)

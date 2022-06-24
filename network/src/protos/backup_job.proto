@@ -3,12 +3,26 @@ import "shared.proto";
 
 // represents a single backup job
 message BackupJobItem {
+  // job ID (local to the node)
   uint32 job_id = 1;
+  // local job name (< 255 characters)
   string name = 2;
   // UNIX timestamp of job creation
   uint64 created = 3;
   // UNIX timestamps of last execution
   uint64 last_ran = 4;
+}
+
+// request for creating/updating/deleting backup jobs
+message BackupJobNodePut {
+  message DeleteJob {
+    uint32 job_id = 1;
+  }
+
+  oneof item_or_delete {
+    BackupJobItem item = 1;
+    DeleteJob delete = 2;
+  }
 }
 
 // reply to adding/modifying a backup job

@@ -3,12 +3,15 @@ use crate::db::models::BackupJob;
 
 pub enum BackupJobError {
     DatabaseError,
-    NameTooLong
+    NameTooLong,
+    InvalidTimestamp
 }
 
 impl Coordinator {
     pub async fn insert_or_update_backup_job(db: &Database, job: BackupJob) -> Result<(), BackupJobError> {
         if job.name.len() > 255 { return Err(BackupJobError::NameTooLong) }
+        if job.created.timestamp() < 0 { return Err(BackupJobError::InvalidTimestamp) }
+        if job.last_ran.is_some() && job.last_ran.unwrap().timestamp() < 0 { return Err(BackupJobError::InvalidTimestamp) }
 
         match db.get_backup_job_by_local_id(job.node_id, job.local_job_id).await {
             Ok(Some(_)) => {

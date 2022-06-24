@@ -97,12 +97,18 @@ async fn main() {
     info!("Passphrase: {passphrase}");
 
     debug!("sending test backup job to coordinator...");
-    pluto_node::backup_job::send_backup_job_to_coordinator(&client, &keys, BackupJob {
+    pluto_node::backup_job::create_or_update_remote_backup_job(&client, &keys, BackupJob {
         job_id: 1,
         name: "x".to_string(),
         created: 1,
         last_ran: None
     }).await.unwrap();
+
+    let remote_jobs = pluto_node::backup_job::get_remote_backup_jobs(&client, &keys).await.unwrap();
+    debug!("backup jobs: {remote_jobs:?}");
+
+    debug!("deleting remote backup job...");
+    pluto_node::backup_job::delete_remote_backup_job(&client, &keys, 1).await.unwrap();
 
     let remote_jobs = pluto_node::backup_job::get_remote_backup_jobs(&client, &keys).await.unwrap();
     debug!("backup jobs: {remote_jobs:?}");

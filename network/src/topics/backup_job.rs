@@ -1,7 +1,7 @@
 use crate::protos::backup_job::*;
 use super::Request;
 
-impl Request for BackupJobItem {
+impl Request for BackupJobNodePut {
     type Response = BackupJobCoordinatorPutResponse;
 }
 

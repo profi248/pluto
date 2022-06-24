@@ -1,4 +1,5 @@
 // HKPE Protocol - https://www.rfc-editor.org/rfc/rfc9180.html
+// (cryptography is implemented according to the RFC, serialization is custom -- using protobuf)
 
 // Key Encapsulation Mechanism
 use x25519_dalek::{ PublicKey, StaticSecret };
