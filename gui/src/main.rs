@@ -1,3 +1,5 @@
+mod api;
+
 #[macro_use]
 extern crate tracing;
 
@@ -70,14 +72,7 @@ async fn main() {
     let passphrase = keys.seed().to_mnemonic().to_passphrase();
     info!("Passphrase: {passphrase}");
 
-
-    // GET /hello/warp => 200 OK with body "Hello, warp!"
-    let hello = warp::path!("hello" / String)
-        .map(|name| format!("Hello, {}!", name));
-
-    warp::serve(hello)
-        .run(([127, 0, 0, 1], 3030))
-        .await;
+    api::run().await;
 }
 
 fn log_init() {
