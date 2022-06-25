@@ -23,10 +23,18 @@ jobs:
       run: cd node-service-web/frontend && npm install
     - name: Build the frontend
       run: cd node-service-web/frontend && npm run build
-    - name: Build
-      run: cargo build --verbose
+    - name: Build release
+      run: cargo build --release --verbose
     - name: Run tests
       run: cargo test --verbose
+    - uses: actions/upload-artifact@v3
+      with:
+        name: linux-coordinator
+        path: target/release/pluto-coordinator
+    - uses: actions/upload-artifact@v3
+      with:
+        name: linux-node
+        path: target/release/pluto-node-service-web
   
   build_client_windows:
     runs-on: windows-2019
@@ -54,10 +62,14 @@ jobs:
       run: cd node-service-web/frontend && npm install
     - name: Build the frontend
       run: cd node-service-web/frontend && npm run build
-    - name: Build
-      run: cargo build --verbose --workspace --exclude pluto-coordinator
+    - name: Build release
+      run: cargo build --release --verbose --workspace --exclude pluto-coordinator
     - name: Run tests
       run: cargo test --verbose --workspace --exclude pluto-coordinator
+    - uses: actions/upload-artifact@v3
+      with:
+        name: windows-node
+        path: target/release/pluto-node-service-web.exe
   
   build_client_mac:
     runs-on: macos-latest
@@ -72,7 +84,11 @@ jobs:
         run: cd node-service-web/frontend && npm install
       - name: Build the frontend
         run: cd node-service-web/frontend && npm run build
-      - name: Build
-        run: cargo build --verbose
+      - name: Build release
+        run: cargo build --release --verbose --workspace --exclude pluto-coordinator
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --verbose --workspace --exclude pluto-coordinator
+      - uses: actions/upload-artifact@v3
+        with:
+          name: macos-node
+          path: target/release/pluto-node-service-web
