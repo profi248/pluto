@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 pluto-network = { path = "../network" }
 pluto-node = { path = "../node" }
+pluto-macros = { path = "../macros" }
 
 # Async
 tokio = { version = "1", features = ["full"] }

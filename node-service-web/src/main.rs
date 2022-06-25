@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+use tokio::sync::RwLock;
+
 use pluto_network::key::Keys;
 
 use pluto_network::prelude::*;
@@ -14,6 +16,8 @@ use pluto_network::rumqttc::{ Event, Incoming, QoS };
 use pluto_node::auth;
 use pluto_node::db::Database;
 use pluto_node::node::Node;
+
+type KeysShared = Arc<RwLock<Option<Keys>>>;
 
 #[tokio::main]
 async fn main() {
@@ -53,28 +57,17 @@ async fn main() {
         }
     });
 
-    let keys;
+    let mut keys: KeysShared = Arc::new(RwLock::new(None));
 
     if Database::get_initial_setup_done().unwrap() {
         debug!("Node already set up.");
-        keys = auth::get_saved_keys().unwrap();
-        let node_topic_id = pluto_network::utils::get_node_topic_id(keys.public_key().as_bytes().to_vec());
-
-        client.client().subscribe(format!("node/{node_topic_id}/#"), QoS::AtMostOnce).await.unwrap();
-    } else {
-        info!("Registering node to the network.");
-        keys = Keys::generate();
-
-        let node_topic_id = pluto_network::utils::
-        get_node_topic_id(keys.public_key().as_bytes().to_vec());
-
-        client.client().subscribe(format!("node/{node_topic_id}/#"), QoS::AtMostOnce).await.unwrap();
-        auth::register_node(&client, &keys).await.unwrap();
+        keys = Arc::new(RwLock::new(Some(auth::get_saved_keys().unwrap())));
+        pluto_node::utils::subscribe_to_topics(client.clone(), &keys.read().await.as_ref().unwrap()).await.unwrap();
     }
 
-    info!("Node is ready.");
-    let passphrase = keys.seed().to_mnemonic().to_passphrase();
-    info!("Passphrase: {passphrase}");
+    // info!("Node is ready.");
+    // let passphrase = keys.seed().to_mnemonic().to_passphrase();
+    // info!("Passphrase: {passphrase}");
 
     api::run(([127, 0, 0, 1], 8080), &client, &keys).await;
 }

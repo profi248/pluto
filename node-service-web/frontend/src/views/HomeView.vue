@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import Overview from "@/components/Overview.vue";
+import Setup from "@/components/Setup.vue";
 </script>
 
 <template>
   <main>
-    <Overview msg="hello world" />
+    <div class="container">
+      home
+    </div>
   </main>
 </template>
