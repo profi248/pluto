@@ -20,19 +20,26 @@ extern crate lazy_static;
 
 use pluto_network::Error;
 use pluto_network::protos::shared::error_response::ErrorType;
-use crate::NodeError::RequestError;
 
 #[derive(Debug)]
 pub enum NodeError {
     RequestError(Error),
     ResponseError(ErrorType),
+    DatabaseError(diesel::result::Error),
     CryptoError,
     ParseError,
-    ClientError
+    ClientError,
+    NotFound,
 }
 
 impl From<pluto_network::Error> for NodeError {
     fn from(e: Error) -> Self {
-        RequestError(e)
+        Self::RequestError(e)
+    }
+}
+
+impl From<diesel::result::Error> for NodeError {
+    fn from(err: diesel::result::Error) -> Self {
+        Self::DatabaseError(err)
     }
 }

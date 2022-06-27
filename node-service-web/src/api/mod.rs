@@ -23,7 +23,11 @@ pub async fn run(addr: impl Into<std::net::SocketAddr>, client: &Client, keys: &
         .or(dist)
 
         .or(filters::status(client.clone()))
-        .or(filters::setup(client, keys));
+        .or(filters::setup(client.clone(), keys.clone()))
+        .or(filters::get_jobs(client.clone(), keys.clone()))
+        .or(filters::create_job(client.clone(), keys.clone()))
+        .or(filters::update_job(client.clone(), keys.clone()))
+        .or(filters::delete_job(client.clone(), keys.clone()));
 
     warp::serve(routes).run(addr).await;
 }

@@ -1,4 +1,4 @@
-use warp::{reply, http::StatusCode, reply::Json };
+use warp::{ reply, http::StatusCode, reply::Json };
 use serde::{ Deserialize };
 use serde_json::json;
 
@@ -9,6 +9,7 @@ use pluto_node::utils::subscribe_to_topics;
 
 use pluto_macros::reject;
 
+use super::generate_error;
 use crate::KeysShared;
 
 #[derive(Deserialize)]
@@ -74,9 +75,4 @@ pub async fn setup(setup: Setup, client: Client, keys: KeysShared) -> Result<imp
         "success": true,
         "passphrase": passphrase
     })), StatusCode::OK))
-}
-
-#[inline]
-pub fn generate_error(error: impl Into<String>, status: StatusCode) -> reply::WithStatus<Json> {
-    reply::with_status(reply::json(&json!({ "error": error.into() })), status)
 }

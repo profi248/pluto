@@ -1150,12 +1150,14 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64",
+ "chrono",
  "diesel",
  "diesel_migrations",
  "dirs",
  "getrandom 0.2.6",
  "lazy_static",
  "pluto-network",
+ "serde",
  "tracing",
  "x25519-dalek",
 ]

@@ -1,3 +1,4 @@
+use chrono::Utc;
 use pluto_network::{client::Client, key::Keys, rumqttc::QoS, prelude::*, topics::*, utils::get_node_topic_id };
 use pluto_network::protos::shared::error_response::ErrorType;
 use pluto_network::protos::backup_job::{
@@ -7,6 +8,7 @@ use pluto_network::protos::backup_job::{
 };
 
 use crate::{ node, NodeError };
+use crate::db::Database;
 use crate::db::models::backup_job::BackupJob;
 
 pub async fn get_remote_backup_jobs(client: &Client, keys: &Keys) -> std::result::Result<Vec<BackupJob>, NodeError> {
@@ -65,7 +67,47 @@ pub async fn get_remote_backup_jobs(client: &Client, keys: &Keys) -> std::result
     return Ok(job_vec)
 }
 
-pub async fn create_or_update_remote_backup_job(client: &Client, keys: &Keys, job: BackupJob) -> std::result::Result<(), NodeError> {
+// todo we should probably use transactions here
+pub async fn create_backup_job(client: &Client, keys: &Keys, name: String) -> std::result::Result<(), NodeError> {
+    let time = Utc::now();
+    let id = Database::create_backup_job(name.clone(), time)?;
+    let job = BackupJob {
+        job_id: id,
+        name,
+        created: Utc::now().timestamp(),
+        last_ran: None,
+    };
+
+    create_or_update_remote_backup_job(client, keys, job).await?;
+
+    Ok(())
+}
+
+pub async fn update_backup_job(client: &Client, keys: &Keys, job_id: i32, name: String, last_ran: Option<i64>) -> std::result::Result<(), NodeError> {
+    match Database::get_backup_job(job_id)? {
+        Some(_) => Database::update_backup_job(job_id, name, last_ran)?,
+        None => return Err(NodeError::NotFound)
+    }
+
+    let job = Database::get_backup_job(job_id)?.unwrap();
+    create_or_update_remote_backup_job(client, keys, job).await?;
+
+    Ok(())
+}
+
+pub async fn delete_backup_job(client: &Client, keys: &Keys, job_id: i32) -> std::result::Result<(), NodeError> {
+    let local_job = Database::get_backup_job(job_id)?;
+    if local_job.is_none() {
+        return Err(NodeError::NotFound)
+    }
+
+    delete_remote_backup_job(client, keys, job_id as u32).await?;
+    Database::delete_backup_job(job_id)?;
+
+    Ok(())
+}
+
+async fn create_or_update_remote_backup_job(client: &Client, keys: &Keys, job: BackupJob) -> std::result::Result<(), NodeError> {
     let mut msg_wrapper = BackupJobNodePut::default();
 
     let mut msg = BackupJobItem::default();
@@ -79,7 +121,7 @@ pub async fn create_or_update_remote_backup_job(client: &Client, keys: &Keys, jo
     send_backup_job_to_coordinator(client, keys, msg_wrapper).await
 }
 
-pub async fn delete_remote_backup_job(client: &Client, keys: &Keys, job_id: u32) -> std::result::Result<(), NodeError> {
+async fn delete_remote_backup_job(client: &Client, keys: &Keys, job_id: u32) -> std::result::Result<(), NodeError> {
     let mut msg_wrapper = BackupJobNodePut::default();
 
     let mut msg = backup_job_node_put::DeleteJob::default();
@@ -90,7 +132,7 @@ pub async fn delete_remote_backup_job(client: &Client, keys: &Keys, job_id: u32)
     send_backup_job_to_coordinator(client, keys, msg_wrapper).await
 }
 
-pub async fn send_backup_job_to_coordinator(client: &Client, keys: &Keys, msg: BackupJobNodePut) -> std::result::Result<(), NodeError> {
+async fn send_backup_job_to_coordinator(client: &Client, keys: &Keys, msg: BackupJobNodePut) -> std::result::Result<(), NodeError> {
     let node_topic_id = get_node_topic_id(keys.public_key().as_bytes().to_vec());
 
     let response = client.send_and_listen(
