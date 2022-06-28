@@ -36,12 +36,24 @@ async fn main() {
 
     let client = node.client().clone();
     let client_cloned = client.clone();
+    let mut prev_conn_state = true;
+
+    let keys: KeysShared = Arc::new(RwLock::new(None));
+    let keys_cloned = keys.clone();
 
     tokio::spawn(async move {
         let client = client_cloned;
+        let keys = keys_cloned;
         loop {
             match event_loop.poll().await {
                 Ok(e) => {
+                    if !prev_conn_state {
+                        debug!("Resubscribing after reconnection");
+                        debug!("Clearing event loop: {:?}", event_loop.state.clean());
+                        pluto_node::utils::
+                            subscribe_to_topics(client.clone(), &keys.read().await.as_ref().unwrap()).await.unwrap();
+                    }
+                    prev_conn_state = true;
                     client.set_connection_alive(true);
                     if let Event::Incoming(Incoming::Publish(event)) = e {
                         trace!("{:?}", event);
@@ -51,6 +63,8 @@ async fn main() {
                     }
                 },
                 Err(e) => {
+                    debug!("MQTT disconnected, clearing event loop: {:?}", event_loop.state.clean());
+                    prev_conn_state = false;
                     client.set_connection_alive(false);
                     error!("{e:?}");
                     tokio::time::sleep(Duration::from_secs(15)).await;
@@ -59,11 +73,10 @@ async fn main() {
         }
     });
 
-    let mut keys: KeysShared = Arc::new(RwLock::new(None));
 
     if db.get_initial_setup_done().unwrap() {
         debug!("Node already set up.");
-        keys = Arc::new(RwLock::new(Some(auth::get_saved_keys().unwrap())));
+        *keys.write().await = Some(auth::get_saved_keys().unwrap());
         pluto_node::utils::subscribe_to_topics(client.clone(), &keys.read().await.as_ref().unwrap()).await.unwrap();
     }
 
@@ -121,7 +134,7 @@ fn log_init() {
     let hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
         error!("{:?}", panic_info);
-
         hook(panic_info);
+        std::process::exit(99);
     }));
 }

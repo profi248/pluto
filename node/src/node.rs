@@ -30,6 +30,7 @@ impl Node {
         let mut options = MqttOptions::new(client_id.clone(), host, port);
         options.set_keep_alive(Duration::from_secs(30));
         options.set_credentials(MQTT_NODE_USERNAME, MQTT_NODE_PASSWORD);
+        options.set_clean_session(true);
 
         let (client, event_loop) = AsyncClient::new(options, 100);
 

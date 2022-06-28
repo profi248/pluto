@@ -10,6 +10,7 @@ message ErrorResponse {
     ALREADY_REGISTERED = 5;
     INVALID_BACKUP_JOB = 6;
     PUBKEY_NOT_FOUND = 7;
+    ITEM_NOT_FOUND = 8;
   };
 
   ErrorType error = 2;

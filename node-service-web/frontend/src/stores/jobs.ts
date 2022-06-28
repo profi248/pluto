@@ -24,8 +24,8 @@ export const useJobsStore = defineStore('jobsStore', {
   actions: {
     refreshJobs: async () => {
       // why can't we use `this` here??
-      useJobsStore().jobs = (await (await fetch(backupJobEndpoint)).json()).jobs;
       try {
+        useJobsStore().jobs = (await (await fetch(backupJobEndpoint)).json()).jobs;
       } catch (e) {
         alert("Error loading backup jobs: " + e);
       }

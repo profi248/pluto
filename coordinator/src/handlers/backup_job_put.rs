@@ -97,6 +97,20 @@ impl Handler for BackupJobPutHandler {
             },
             // request for deleting jobs
             Some(Item_or_delete::Delete(job_msg)) => {
+                match db.get_backup_job_by_local_id(node_id, job_msg.job_id as i32).await {
+                    Ok(Some(_)) => {},
+                    Ok(None) => {
+                        Self::send_error(client, &node_pubkey, node_topic_id, &mut response_msg_wrapper,
+                                         ErrorType::ITEM_NOT_FOUND).await;
+                        return None;
+                    },
+                    Err(_) => {
+                        error!("DB failure when finding backup job");
+                        Self::send_error(client, &node_pubkey, node_topic_id, &mut response_msg_wrapper,
+                                         ErrorType::SERVER_ERROR).await;
+                        return None;
+                    }
+                };
                 match db.delete_backup_job(node_id, job_msg.job_id as i32).await {
                     Ok(_) => {
                         Self::send_success(&client, &node_pubkey, node_topic_id, &mut response_msg_wrapper).await;

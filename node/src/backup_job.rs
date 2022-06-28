@@ -105,7 +105,7 @@ pub async fn update_backup_job(client: &Client, keys: &Keys, job_id: i32, name: 
 
 pub async fn delete_backup_job(client: &Client, keys: &Keys, job_id: i32) -> std::result::Result<(), NodeError> {
     let db = Database::new();
-    let conn = db.begin_transaction()?;
+    db.begin_transaction()?;
 
     let local_job = db.get_backup_job(job_id)?;
     if local_job.is_none() {

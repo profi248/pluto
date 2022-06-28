@@ -49,8 +49,8 @@ pub async fn setup(setup: Setup, client: Client, keys: KeysShared) -> Result<imp
         *keys.write().await = Some(new_keys.clone());
 
         subscribe_to_topics(client.clone(), &new_keys).await
-            .ok_or(generate_error("Error when subscribing to topics", StatusCode::INTERNAL_SERVER_ERROR))?;
-
+            .map_err(|e| generate_error(format!("Error when subscribing to topics: {e:?}"),
+                StatusCode::INTERNAL_SERVER_ERROR))?;
         match pluto_node::auth::save_credentials_to_storage(&new_keys) {
             Some(_) => {},
             None => {
@@ -63,7 +63,8 @@ pub async fn setup(setup: Setup, client: Client, keys: KeysShared) -> Result<imp
         let new_keys = Keys::generate();
         *keys.write().await = Some(new_keys.clone());
         subscribe_to_topics(client.clone(), &new_keys).await
-            .ok_or(generate_error("Error when subscribing to topics", StatusCode::INTERNAL_SERVER_ERROR))?;
+            .map_err(|e| generate_error(format!("Error when subscribing to topics: {e:?}"),
+                StatusCode::INTERNAL_SERVER_ERROR))?;
 
         pluto_node::auth::register_node(&client, &new_keys).await
             .map_err(|e| generate_error(format!("Error: {e:?}"), StatusCode::INTERNAL_SERVER_ERROR))?;
