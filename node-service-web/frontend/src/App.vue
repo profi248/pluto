@@ -74,7 +74,7 @@ async function autoRefreshStatus() {
 
 <style lang="scss">
 
-@use 'assets/dependencies/boostrap-icons';
+@use 'assets/bootstrap-icons';
 
 @font-face {
   font-family: 'Mulish';
