@@ -23,7 +23,9 @@ type KeysShared = Arc<RwLock<Option<Keys>>>;
 async fn main() {
     pluto_node::utils::setup_dirs();
     log_init();
-    Database::run_migrations().unwrap();
+
+    let db = Database::new();
+    db.run_migrations().unwrap();
 
     let handler = Arc::new(IncomingHandler::new(HashMap::new()));
     let client_id = auth::get_mqtt_client_id();
@@ -59,7 +61,7 @@ async fn main() {
 
     let mut keys: KeysShared = Arc::new(RwLock::new(None));
 
-    if Database::get_initial_setup_done().unwrap() {
+    if db.get_initial_setup_done().unwrap() {
         debug!("Node already set up.");
         keys = Arc::new(RwLock::new(Some(auth::get_saved_keys().unwrap())));
         pluto_node::utils::subscribe_to_topics(client.clone(), &keys.read().await.as_ref().unwrap()).await.unwrap();

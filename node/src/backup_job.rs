@@ -67,10 +67,12 @@ pub async fn get_remote_backup_jobs(client: &Client, keys: &Keys) -> std::result
     return Ok(job_vec)
 }
 
-// todo we should probably use transactions here
 pub async fn create_backup_job(client: &Client, keys: &Keys, name: String) -> std::result::Result<(), NodeError> {
     let time = Utc::now();
-    let id = Database::create_backup_job(name.clone(), time)?;
+    let db = Database::new();
+    db.begin_transaction()?;
+
+    let id = db.create_backup_job(name.clone(), time)?;
     let job = BackupJob {
         job_id: id,
         name,
@@ -79,30 +81,41 @@ pub async fn create_backup_job(client: &Client, keys: &Keys, name: String) -> st
     };
 
     create_or_update_remote_backup_job(client, keys, job).await?;
+    db.commit_transaction()?;
 
     Ok(())
 }
 
 pub async fn update_backup_job(client: &Client, keys: &Keys, job_id: i32, name: String, last_ran: Option<i64>) -> std::result::Result<(), NodeError> {
-    match Database::get_backup_job(job_id)? {
-        Some(_) => Database::update_backup_job(job_id, name, last_ran)?,
+    let db = Database::new();
+    db.begin_transaction()?;
+
+    match db.get_backup_job(job_id)? {
+        Some(_) => db.update_backup_job(job_id, name, last_ran)?,
         None => return Err(NodeError::NotFound)
     }
 
-    let job = Database::get_backup_job(job_id)?.unwrap();
+    let job = db.get_backup_job(job_id)?.unwrap();
     create_or_update_remote_backup_job(client, keys, job).await?;
+
+    db.commit_transaction()?;
 
     Ok(())
 }
 
 pub async fn delete_backup_job(client: &Client, keys: &Keys, job_id: i32) -> std::result::Result<(), NodeError> {
-    let local_job = Database::get_backup_job(job_id)?;
+    let db = Database::new();
+    let conn = db.begin_transaction()?;
+
+    let local_job = db.get_backup_job(job_id)?;
     if local_job.is_none() {
         return Err(NodeError::NotFound)
     }
 
     delete_remote_backup_job(client, keys, job_id as u32).await?;
-    Database::delete_backup_job(job_id)?;
+    db.delete_backup_job(job_id)?;
+
+    db.commit_transaction()?;
 
     Ok(())
 }

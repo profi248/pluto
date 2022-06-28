@@ -19,7 +19,7 @@ pub struct Setup {
 
 #[reject]
 pub async fn setup(setup: Setup, client: Client, keys: KeysShared) -> Result<impl warp::Reply, reply::WithStatus<Json>> {
-    match Database::get_initial_setup_done() {
+    match Database::new().get_initial_setup_done() {
         Some(false) => {},
         Some(true) => {
             return Err(generate_error("Setup already completed", StatusCode::BAD_REQUEST));

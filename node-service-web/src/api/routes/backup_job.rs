@@ -31,7 +31,7 @@ struct Jobs {
 
 #[reject]
 pub async fn get_jobs(client: Client, keys: KeysShared) -> Result<impl warp::Reply, reply::WithStatus<Json>> {
-    let jobs = Database::get_backup_jobs()
+    let jobs = Database::new().get_backup_jobs()
         .map_err(|e| generate_error(format!("Error: {e:?}"), StatusCode::INTERNAL_SERVER_ERROR))?;
     let jobs_json = Jobs { jobs };
 

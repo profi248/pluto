@@ -12,7 +12,7 @@ use crate::NodeError;
 use crate::db::Database;
 
 pub fn get_saved_keys() -> Option<Keys> {
-    let seed = Database::get_by_key("node_seed").ok()??;
+    let seed = Database::new().get_by_key("node_seed").ok()??;
 
     Some(Keys::from_entropy(seed.try_into().ok()?))
 }
@@ -26,13 +26,15 @@ pub fn restore_keys_from_passphrase(passphrase: String) -> std::result::Result<K
 
 pub fn save_credentials_to_storage(keys: &Keys) -> Option<()> {
     let seed = keys.seed().entropy().to_vec();
-    if Database::set_by_key("node_seed",seed).is_ok()
-    {
-        debug!("Node seed saved.");
-        Database::set_initial_setup_done(true)
-    } else {
-        None
-    }
+    let db = Database::new();
+
+    db.begin_transaction().ok()?;
+    db.set_by_key("node_seed", seed).ok()?;
+    db.set_initial_setup_done(true)?;
+    db.commit_transaction().ok()?;
+
+    debug!("Node seed saved.");
+    Some(())
 }
 
 pub fn get_mqtt_client_id() -> String {
