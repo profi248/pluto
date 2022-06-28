@@ -3,6 +3,9 @@ import { RouterLink, RouterView } from 'vue-router'
 import { ref, onMounted } from 'vue'
 
 import Setup from "@/components/Setup.vue";
+import { useJobsStore } from "@/stores/jobs";
+
+const jobs = useJobsStore();
 
 let fetchTimer: number | undefined = undefined;
 let status = ref({
@@ -19,9 +22,10 @@ onMounted(async () => {
   await fetchStatus();
   needsSetup.value = !status.value.setup_complete;
   await autoRefreshStatus();
+  await jobs.refreshJobs();
 });
 
-async function fetchStatus() {  
+async function fetchStatus() {
   try {
     status.value = (await (await fetch(statusEndpoint)).json());
   } catch (e) {
@@ -63,10 +67,14 @@ async function autoRefreshStatus() {
     </header>
   </div>
   <Setup v-if="needsSetup" />
-  <RouterView v-if="status.setup_complete === true" />
+  <Transition name="fade" mode="out-in">
+    <RouterView v-if="status.setup_complete === true" />
+  </Transition>
 </template>
 
 <style lang="scss">
+
+@use 'assets/boostrap-icons';
 
 @font-face {
   font-family: 'Mulish';
@@ -136,4 +144,13 @@ async function autoRefreshStatus() {
   color: #f44336;
 }
 
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease-out;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>
