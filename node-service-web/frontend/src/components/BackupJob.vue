@@ -32,7 +32,7 @@ const props = defineProps<{
 
 onMounted(async () => {
   if (!props.new && !props.job) throw new Error("Job prop is not set");
-  if (!props.new) jobName.value = props.job?.name!;
+  if (!props.new) jobName.value = props.job?.job.name!;
 });
 
 async function save() {
@@ -54,7 +54,7 @@ async function save() {
       await jobs.createJob(job);
     } else {
       job = props.job;
-      job.name = jobName.value;
+      job.job.name = jobName.value;
 
       await jobs.updateJob(job);
     }

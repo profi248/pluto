@@ -1,10 +1,15 @@
 import { defineStore } from 'pinia'
 
 export interface Job {
-  job_id: number,
-  name: string,
-  created: number,
-  last_ran: number | null,
+  job: {
+    job_id: number,
+    name: string,
+    created: number,
+    last_ran: number | null,
+  },
+  paths: [
+    { path: string, path_type: string },
+  ]
 }
 
 const backupJobEndpoint = "/api/backup_jobs";
@@ -15,7 +20,7 @@ export const useJobsStore = defineStore('jobsStore', {
   }),
   getters: {
     getJobById: (state) => (id: number) => {
-        return state.jobs.find((job) => job.job_id === id)
+        return state.jobs.find((job) => job.job.job_id === id)
     },
     getJobCount: (state) => () => {
         return state.jobs.length;
@@ -51,7 +56,7 @@ export const useJobsStore = defineStore('jobsStore', {
       await useJobsStore().refreshJobs();
     },
     updateJob: async (job: Job) => {
-      let response = await fetch(backupJobEndpoint + `/${job.job_id}`, {
+      let response = await fetch(backupJobEndpoint + `/${job.job.job_id}`, {
         method: "PUT",
         headers: {
           'Accept': 'application/json',

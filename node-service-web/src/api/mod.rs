@@ -22,10 +22,13 @@ pub async fn run(addr: impl Into<std::net::SocketAddr>, client: &Client, keys: &
         index_html
         .or(filters::status(client.clone()))
         .or(filters::setup(client.clone(), keys.clone()))
-        .or(filters::get_jobs(client.clone(), keys.clone()))
+        .or(filters::get_jobs())
         .or(filters::create_job(client.clone(), keys.clone()))
         .or(filters::update_job(client.clone(), keys.clone()))
         .or(filters::delete_job(client.clone(), keys.clone()))
+        .or(filters::create_job_path())
+        .or(filters::update_job_path())
+        .or(filters::delete_job_path())
 
         .or(dist);
 

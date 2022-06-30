@@ -5,9 +5,9 @@ import type { Job } from '@/stores/jobs'
 const jobs = useJobsStore();
 
 async function deleteJob(job: Job) {
-  if (confirm(`Are you sure you want to delete job "${job.name}"?`)) {
+  if (confirm(`Are you sure you want to delete job "${job.job.name}"?`)) {
     try {
-      await jobs.deleteJob(job.job_id);
+      await jobs.deleteJob(job.job.job_id);
     } catch (e) {
       alert("Error: " + e);
     }
@@ -24,10 +24,10 @@ async function deleteJob(job: Job) {
           <div class="card" v-if="jobs.getJobCount() > 0">
             <ul class="list-group list-group-flush">
               <li class="list-group-item d-flex align-items-center" v-for="backupJob in jobs.jobs">
-                {{ backupJob.name }}
+                {{ backupJob.job.name }}
                 <div class="ms-auto">
                   <button type="button" class="btn btn-outline-dark me-2" @click="deleteJob(backupJob)"><i class="bi bi-trash3"></i></button>
-                  <router-link :to="'/backup_jobs/' + backupJob.job_id">
+                  <router-link :to="'/backup_jobs/' + backupJob.job.job_id">
                     <button type="button" class="btn btn-outline-dark"><i class="bi bi-pencil-square"></i></button>
                   </router-link>
                 </div>

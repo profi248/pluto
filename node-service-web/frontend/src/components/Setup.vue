@@ -43,7 +43,7 @@ async function setup(fresh: boolean) {
       }
     } else {
       loading.value = false;
-      alert("Error: " + (await response.json()).message);
+      alert("Error: " + (await response.json()).error);
     }
   } else {
     if (!checkPassphraseLength()) {

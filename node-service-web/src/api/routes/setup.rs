@@ -30,7 +30,7 @@ pub async fn setup(setup: Setup, client: Client, keys: KeysShared) -> Result<imp
     }
 
     if keys.read().await.is_some() {
-        return Err(generate_error("Server error", StatusCode::INTERNAL_SERVER_ERROR));
+        return Err(generate_error("Inconsistent keys state", StatusCode::INTERNAL_SERVER_ERROR));
     }
 
     let passphrase = if let Some(passphrase) = setup.mnemonic {

@@ -22,11 +22,9 @@ pub fn setup(client: Client, keys: KeysShared) -> impl Filter<Extract = impl war
         .and_then(routes::setup::setup)
 }
 
-pub fn get_jobs(client: Client, keys: KeysShared) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+pub fn get_jobs() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("api" / "backup_jobs")
         .and(warp::get())
-        .and(with_client(client))
-        .and(with_keys(keys))
         .and_then(routes::backup_job::get_jobs)
 }
 
@@ -56,6 +54,28 @@ pub fn delete_job(client: Client, keys: KeysShared) -> impl Filter<Extract = imp
         .and(with_client(client))
         .and(with_keys(keys))
         .and_then(routes::backup_job::delete_job)
+}
+
+pub fn create_job_path() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("api" / "backup_jobs" / i32 / "paths")
+        .and(warp::post())
+        .and(warp::body::content_length_limit(1024 * 64))
+        .and(warp::body::json())
+        .and_then(routes::backup_job::create_job_path)
+}
+
+pub fn update_job_path() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("api" / "backup_jobs" / i32 / "paths" / i32)
+        .and(warp::put())
+        .and(warp::body::content_length_limit(1024 * 64))
+        .and(warp::body::json())
+        .and_then(routes::backup_job::update_job_path)
+}
+
+pub fn delete_job_path() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("api" / "backup_jobs" / i32 / "paths" / i32)
+        .and(warp::delete())
+        .and_then(routes::backup_job::delete_job_path)
 }
 
 fn with_client(client: Client) -> impl Filter<Extract=(Client, ), Error=std::convert::Infallible> + Clone {

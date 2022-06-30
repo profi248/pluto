@@ -13,6 +13,11 @@ create table backup_job_path (
      job_id    INTEGER not null constraint backup_job_path_backup_job_job_id_fk
          references backup_job(job_id)
          on update cascade on delete cascade,
-     path_type INTEGER not null,
-     path      TEXT not null
+     -- 0 = folder path, 1 = exclusion pattern
+     path_type INTEGER not null check ( path_type in (0, 1) ),
+     -- max length is Windows filesystem limit in Unicode characters
+     path      TEXT not null check ( length(path) > 0 and length(path) < 32760 )
 );
+
+create unique index backup_path_uindex
+    on backup_job_path (job_id, path, path_type);

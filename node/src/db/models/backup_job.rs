@@ -3,9 +3,10 @@ use chrono::{ DateTime, Utc };
 use serde::{ Serialize, Deserialize };
 
 use crate::db::{ Database, last_insert_rowid };
-use crate::db::schema::backup_job;
+use crate::db::models::backup_job_path::BackupJobPath;
+use crate::db::schema::{ backup_job_path, backup_job };
 
-#[derive(Queryable, Debug, Identifiable, Default, Clone, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Identifiable, Default, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[primary_key(job_id)]
 #[table_name = "backup_job"]
 pub struct BackupJob {
@@ -41,8 +42,11 @@ impl Database {
         backup_job::table.find(job_id).first(&self.conn).optional()
     }
 
-    pub fn get_backup_jobs(&self) -> QueryResult<Vec<BackupJob>> {
-        backup_job::table.order(backup_job::created.desc()).load(&self.conn)
+    pub fn get_backup_jobs(&self) -> QueryResult<Vec<(BackupJob, BackupJobPath)>> {
+        backup_job::table
+            .inner_join(backup_job_path::table)
+            .order(backup_job::created.desc())
+            .load(&self.conn)
     }
 
     pub fn update_backup_job(&self, job_id: i32, name: String, last_ran: Option<i64>) -> QueryResult<()> {
