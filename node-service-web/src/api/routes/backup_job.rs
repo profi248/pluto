@@ -20,6 +20,7 @@ use crate::KeysShared;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BackupJobPathItem {
+    path_id: Option<i32>,
     path: String,
     path_type: PathType
 }
@@ -27,6 +28,7 @@ pub struct BackupJobPathItem {
 impl<'a> From<BackupJobPath> for BackupJobPathItem {
     fn from(path: BackupJobPath) -> Self {
         BackupJobPathItem {
+            path_id: Some(path.path_id),
             path: path.path,
             path_type: match path.path_type {
                 0 => PathType::Folder,
@@ -92,10 +94,10 @@ pub async fn create_job(job: BackupJobCreate, client: Client, keys: KeysShared) 
     let keys = keys_guard.as_ref().ok_or(
         generate_error(format!("Setup required"), StatusCode::BAD_REQUEST))?;
 
-    create_backup_job(&client, keys, job.name).await
+    let job_id = create_backup_job(&client, keys, job.name).await
         .map_err(|e| generate_error(format!("Error creating backup job: {e:?}"), StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    Ok(reply::with_status(reply::json(&json!({ "success": true })), StatusCode::OK))
+    Ok(reply::with_status(reply::json(&json!({ "success": true, "job_id": job_id })), StatusCode::OK))
 }
 
 #[reject]
@@ -139,6 +141,21 @@ pub async fn create_job_path(job_id: i32, path: BackupJobPathItem) -> Result<imp
 }
 
 #[reject]
+pub async fn update_job_path(job_id: i32, path_id: i32, path: BackupJobPathItem) -> Result<impl warp::Reply, reply::WithStatus<Json>> {
+    let db = Database::new();
+    validate_job_and_path(job_id, path_id, &db)?;
+
+    if path_id != path.path_id.unwrap_or(0) {
+        return Err(generate_error(format!("Path ID mismatch"), StatusCode::BAD_REQUEST));
+    }
+
+    Database::new().update_backup_job_path(path_id, path.path, path.path_type)
+        .map_err(|e| generate_error(format!("Error updating backup job path: {e:?}"), StatusCode::INTERNAL_SERVER_ERROR))?;
+
+    Ok(reply::with_status(reply::json(&json!({ "success": true })), StatusCode::OK))
+}
+
+#[reject]
 pub async fn delete_job_path(job_id: i32, path_id: i32) -> Result<impl warp::Reply, reply::WithStatus<Json>> {
     let db = Database::new();
     validate_job_and_path(job_id, path_id, &db)?;
@@ -149,19 +166,8 @@ pub async fn delete_job_path(job_id: i32, path_id: i32) -> Result<impl warp::Rep
     Ok(reply::with_status(reply::json(&json!({ "success": true })), StatusCode::OK))
 }
 
-#[reject]
-pub async fn update_job_path(job_id: i32, path_id: i32, path: BackupJobPathItem) -> Result<impl warp::Reply, reply::WithStatus<Json>> {
-    let db = Database::new();
-    validate_job_and_path(job_id, path_id, &db)?;
-
-    Database::new().update_backup_job_path(path_id, path.path, path.path_type)
-        .map_err(|e| generate_error(format!("Error updating backup job path: {e:?}"), StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    Ok(reply::with_status(reply::json(&json!({ "success": true })), StatusCode::OK))
-}
-
 fn validate_job_and_path(job_id: i32, path_id: i32, db: &Database) -> Result<(), reply::WithStatus<Json>> {
-    if db.backup_job_has_path_id(job_id, path_id)
+    if !db.backup_job_has_path_id(job_id, path_id)
         .map_err(|e| generate_error(format!("Error: {e:?}"), StatusCode::INTERNAL_SERVER_ERROR))?
     {
         return Err(generate_error(format!("Path or backup job not found"), StatusCode::NOT_FOUND));

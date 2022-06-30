@@ -69,4 +69,10 @@ impl Database {
             .optional()
             .map(|x: Option<BackupJobPath>| x.is_some())
     }
+
+    pub fn get_paths_for_backup_job(&self, job_id: i32) -> QueryResult<Vec<BackupJobPath>> {
+        backup_job_path::table
+            .filter(backup_job_path::job_id.eq(job_id))
+            .load(&self.conn)
+    }
 }

@@ -24,8 +24,13 @@ impl Database {
 
     fn connect() -> SqliteConnection {
         let file = crate::utils::get_db_file_path();
-        SqliteConnection::establish(file.as_str())
-            .unwrap_or_else(|_| panic!("Error opening database file at {file}"))
+        let conn = SqliteConnection::establish(file.as_str())
+            .unwrap_or_else(|_| panic!("Error opening database file at {file}"));
+
+        sql_query("PRAGMA journal_mode = WAL;").execute(&conn).unwrap();
+        sql_query("PRAGMA foreign_keys = ON;").execute(&conn).unwrap();
+
+        conn
     }
 
     pub fn check_connection(&self) -> bool {

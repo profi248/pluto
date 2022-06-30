@@ -2,7 +2,7 @@
   <div class="container">
     <h3 class="text-center">Edit backup job</h3>
     <template v-if="job">
-      <BackupJob :job="job" :new="false" />
+      <BackupJob :job_id="props.id" :new="false" />
     </template>
   </div>
 </template>

@@ -67,7 +67,7 @@ pub async fn get_remote_backup_jobs(client: &Client, keys: &Keys) -> std::result
     return Ok(job_vec)
 }
 
-pub async fn create_backup_job(client: &Client, keys: &Keys, name: String) -> std::result::Result<(), NodeError> {
+pub async fn create_backup_job(client: &Client, keys: &Keys, name: String) -> std::result::Result<i32, NodeError> {
     let time = Utc::now();
     let db = Database::new();
     db.begin_transaction()?;
@@ -83,7 +83,7 @@ pub async fn create_backup_job(client: &Client, keys: &Keys, name: String) -> st
     create_or_update_remote_backup_job(client, keys, job).await?;
     db.commit_transaction()?;
 
-    Ok(())
+    Ok(id)
 }
 
 pub async fn update_backup_job(client: &Client, keys: &Keys, job_id: i32, name: String, last_ran: Option<i64>) -> std::result::Result<(), NodeError> {

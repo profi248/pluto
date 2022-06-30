@@ -7,7 +7,7 @@ const jobs = useJobsStore();
 async function deleteJob(job: Job) {
   if (confirm(`Are you sure you want to delete job "${job.job.name}"?`)) {
     try {
-      await jobs.deleteJob(job.job.job_id);
+      await jobs.deleteJob(job.job.job_id!);
     } catch (e) {
       alert("Error: " + e);
     }
