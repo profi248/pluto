@@ -91,13 +91,17 @@ onMounted(async () => {
 watch(jobs, async (jobsNew, jobsOld) => {
   if (!props.new) {
     jobName.value = jobs.getJobById(props.job_id!)?.job.name!;
-    folders.value = jobs.getJobFolders(props.job_id!)!;
-    ignores.value = jobs.getJobIgnorePatterns(props.job_id!)!;
+
+    // don't override paths if user has already changed them
+    if (folders.value.length === 1 && folders.value[0].path === '')
+      folders.value = jobs.getJobFolders(props.job_id!)!;
+
+    if (ignores.value.length === 0)
+      ignores.value = jobs.getJobIgnorePatterns(props.job_id!)!;
   }
 });
 
 watch(folders, async (foldersNew, foldersOld) => {
-  console.log(folders);
   if (foldersNew.length === 0) folders.value = [{
       path_id: null,
       path: '',
