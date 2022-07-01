@@ -13,6 +13,7 @@ pub mod message;
 pub mod utils;
 
 pub mod protos;
+pub mod challenge;
 
 pub mod error {
     pub use rumqttc::ClientError as MqttError;
