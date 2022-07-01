@@ -105,7 +105,7 @@ async fn main() {
 
     info!("Connected to MQTT broker.");
 
-    tokio::spawn(async move {
+    let event_loop_handle = tokio::spawn(async move {
         info!("Listening for MQTT events...");
         loop {
             let event = match event_loop.poll().await {
@@ -126,9 +126,7 @@ async fn main() {
         }
     });
 
-
-
-    loop {}
+    tokio::join!(event_loop_handle).0.unwrap();
 }
 
 fn log_init() {
