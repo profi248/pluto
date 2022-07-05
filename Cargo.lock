@@ -480,6 +480,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "generator"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1d9279ca822891c1a4dae06d185612cf8fc6acfe5dff37781b41297811b12ee"
+dependencies = [
+ "cc",
+ "libc",
+ "log",
+ "rustversion",
+ "winapi",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -809,6 +822,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "loom"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff50ecb28bb86013e935fb6683ab1f6d3a20016f123c76fd4c27470076ac30f5"
+dependencies = [
+ "cfg-if",
+ "generator",
+ "scoped-tls",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "matchers"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
+dependencies = [
+ "regex-automata",
 ]
 
 [[package]]
@@ -1182,6 +1217,9 @@ dependencies = [
 [[package]]
 name = "pluto-utils"
 version = "0.1.0"
+dependencies = [
+ "loom",
+]
 
 [[package]]
 name = "pollster"
@@ -1369,6 +1407,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex-automata"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
+dependencies = [
+ "regex-syntax",
+]
+
+[[package]]
 name = "regex-syntax"
 version = "0.6.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1482,6 +1529,12 @@ checksum = "1ee86d63972a7c661d1536fefe8c3c8407321c3df668891286de28abcd087360"
 dependencies = [
  "base64",
 ]
+
+[[package]]
+name = "rustversion"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0a5f7c728f5d284929a1cccb5bc19884422bfe6ef4d6c409da2c41838983fcf"
 
 [[package]]
 name = "ryu"
@@ -1945,11 +1998,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4bc28f93baff38037f64e6f43d34cfa1605f27a49c34e8a04c5e78b0babf2596"
 dependencies = [
  "ansi_term",
+ "lazy_static",
+ "matchers",
  "parking_lot 0.12.1",
+ "regex",
  "sharded-slab",
  "smallvec",
  "thread_local",
  "time 0.3.9",
+ "tracing",
  "tracing-core",
  "tracing-log",
 ]
