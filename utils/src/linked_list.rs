@@ -5,13 +5,21 @@ use std::sync::atomic::AtomicPtr;
 #[cfg(loom)]
 use loom::sync::atomic::AtomicPtr;
 
+/// An atomic, stack-like singly-linked list for concurrent use.
+///
+/// Inserting items to the linked list is atomic, and therefore
+/// multiple threads can insert at the same time. However,
+/// the exact order may vary.
+///
+/// Removing items requires a mutable reference, which ensures
+/// that no threads have references to nodes in the linked list.
 pub struct LinkedList<T> {
     root: AtomicPtr<Node<T>>,
 }
 
-unsafe impl<T: Send + Sync> Send for LinkedList<T> { }
-unsafe impl<T: Send + Sync> Sync for LinkedList<T> { }
+// todo: support Arc/Weak for node references
 
+/// A node on a [`LinkedList`].
 pub struct Node<T> {
     pub value: T,
     next: AtomicPtr<Node<T>>,
@@ -23,6 +31,7 @@ unsafe impl<T: Send + Sync> Send for Node<T> { }
 unsafe impl<T: Send + Sync> Sync for Node<T> { }
 
 impl<T> LinkedList<T> {
+    /// Creates a new empty linked list.
     pub fn new() -> Self {
         Self {
             root: AtomicPtr::new(ptr::null_mut()),
@@ -43,6 +52,7 @@ impl<T> LinkedList<T> {
         }
     }
 
+    /// Inserts a value to the front of the linked list (pushes onto stack).
     pub fn push_front(&self, value: T) -> &Node<T> {
         // Relaxed ordering for null checking.
         let mut root = self.root.load(Ordering::Relaxed);
@@ -93,6 +103,7 @@ impl<T> LinkedList<T> {
         }
     }
 
+    /// Removes the first value in the linked list (pops the stack).
     pub fn pop_front(&mut self) -> Option<T> {
         let mut front;
 
@@ -124,10 +135,12 @@ impl<T> LinkedList<T> {
         }
     }
 
+    /// Gets a reference to the first node.
     pub fn front(&self) -> Option<&Node<T>> {
         unsafe { self.root.load(Ordering::Acquire).as_ref() }
     }
 
+    /// Gets a mutable reference to the first node.
     pub fn front_mut(&mut self) -> Option<&mut Node<T>> {
         unsafe { self.root.load(Ordering::Acquire).as_mut() }
     }
@@ -147,6 +160,7 @@ impl<T> Node<T> {
         (*self).value
     }
 
+    /// Inserts a new node after this node.
     pub fn insert_after(&self, value: T) -> &Node<T> {
         let new = Box::leak(Box::new(Self::new(self.list, value)));
 
@@ -174,10 +188,47 @@ impl<T> Node<T> {
         }
     }
 
+    /// Gets a reference to the next node.
     pub fn next(&self) -> Option<&Node<T>> {
-        let next = self.next.load(Ordering::Acquire);
+        unsafe { self.next.load(Ordering::Acquire).as_ref() }
+    }
 
-        unsafe { next.as_ref() }
+    /// Gets a mutable reference to the next node.
+    pub fn next_mut(&mut self) -> Option<&mut Node<T>> {
+        unsafe { self.next.load(Ordering::Acquire).as_mut() }
+    }
+
+    // todo: add unit tests for this.
+    /// Removes the value after this node from the linked list.
+    pub fn pop_next(&mut self) -> Option<T> {
+        let mut next;
+
+        loop {
+            next = self.next.load(Ordering::Acquire);
+
+            if next == ptr::null_mut() {
+                return None;
+            }
+
+            let new_next = unsafe { (*next).next.load(Ordering::Relaxed) };
+
+            let result = self.next.compare_exchange(
+                next,
+                new_next,
+                Ordering::Release,
+                Ordering::Relaxed
+            );
+
+            match result {
+                Ok(_) => return unsafe { Some(Box::from_raw(next).extract()) },
+                Err(_) => {
+                    #[cfg(loom)]
+                    loom::thread::yield_now();
+
+                    continue
+                },
+            }
+        }
     }
 }
 
