@@ -8,11 +8,11 @@ type BlobHash = [u8; 32];
 type PackfileId = [u8; 12];
 
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Debug)]
-enum BlobKind { FileChunk, Tree }
+pub enum BlobKind { FileChunk, Tree }
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Debug)]
-enum CompressionKind { None, Zstd }
+pub enum CompressionKind { None, Zstd }
 
-enum TreeKind { File, Dir }
+pub enum TreeKind { File, Dir }
 
 #[derive(Serialize, Deserialize)]
 struct PackfileBlob {
