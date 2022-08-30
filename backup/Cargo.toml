@@ -16,7 +16,7 @@ tokio = { version = "1.19.2", features = [ "sync" ] }
 
 # Cryptography
 sha2 = "0.10.2"
-aes-gcm = "0.9.4"
+aes-gcm = "0.10.1"
 rand_chacha = "0.3.1"
 getrandom = "0.2.7"
 rand = "0.8.5"

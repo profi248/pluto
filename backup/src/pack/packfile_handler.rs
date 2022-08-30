@@ -7,7 +7,7 @@ use std::io::{ Read, Seek, Write };
 use std::collections::VecDeque;
 
 use zstd::bulk::{ Compressor, Decompressor };
-use aes_gcm::{ AeadInPlace, Aes256Gcm, Key, Nonce, aead::NewAead };
+use aes_gcm::{ AeadInPlace, Aes256Gcm, Key, Nonce, KeyInit };
 use bincode::Options;
 
 use pluto_network::key::Keys;
@@ -119,7 +119,7 @@ impl PackfileHandler {
             packfile.read_exact(&mut header_buf)?;
 
             let key = self.keys.derive_symmetric_key(KEY_DERIVATION_CONSTANT_HEADER);
-            let cipher = Aes256Gcm::new(Key::from_slice(&key));
+            let cipher = Aes256Gcm::new(&key.into());
             cipher.decrypt_in_place(Nonce::from_slice(&packfile_id), b"", &mut header_buf)?;
 
             let header: Vec<PackfileBlob> = bincode::options().with_varint_encoding()
@@ -135,7 +135,7 @@ impl PackfileHandler {
                     packfile.read_exact(&mut blob_buf)?;
 
                     let key = self.keys.derive_symmetric_key(&blob_metadata.hash);
-                    let cipher = Aes256Gcm::new(Key::from_slice(&key));
+                    let cipher = Aes256Gcm::new(&key.into());
                     cipher.decrypt_in_place(Nonce::from_slice(&blob_nonce), b"", &mut blob_buf)?;
 
                     let mut decompressor = Decompressor::new()?;
@@ -203,7 +203,7 @@ impl PackfileHandler {
                 // Derive a new key for each for each blob based on the (unencrypted) hash,
                 // to ensure that we have a unique nonce/key combo.
                 let key = self.keys.derive_symmetric_key(&blob.hash);
-                let cipher = Aes256Gcm::new(Key::from_slice(&key));
+                let cipher = Aes256Gcm::new(&key.into());
 
                 let mut blob_data = compressor.compress(&blob.data)?;
 
@@ -247,7 +247,7 @@ impl PackfileHandler {
 
             // Derive a key for headers based on a constant.
             let key = self.keys.derive_symmetric_key(KEY_DERIVATION_CONSTANT_HEADER);
-            let cipher = Aes256Gcm::new(Key::from_slice(&key));
+            let cipher = Aes256Gcm::new(&key.into());
 
             let mut header: Vec<u8> = bincode::options().with_varint_encoding().serialize(&header)?;
             cipher.encrypt_in_place(&Nonce::from_slice(&packfile_id), b"", &mut header)?;

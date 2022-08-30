@@ -8,8 +8,7 @@ use std::fs;
 use std::fs::File;
 use std::io::{ Read, Write };
 
-use aes_gcm::{ AeadInPlace, Aes256Gcm, Key, Nonce };
-use aes_gcm::aead::NewAead;
+use aes_gcm::{ AeadInPlace, Aes256Gcm, Key, Nonce, KeyInit };
 use bincode::Options;
 
 use pluto_network::key::Keys;
@@ -152,7 +151,7 @@ impl BlobIndex {
                 file.read_to_end(&mut buf)?;
 
                 let key = self.keys.derive_symmetric_key(KEY_DERIVATION_CONSTANT);
-                let cipher = Aes256Gcm::new(Key::from_slice(&key));
+                let cipher = Aes256Gcm::new(&key.into());
                 let nonce_bytes = self.counter_to_nonce(file_num.unwrap());
                 let nonce = Nonce::from_slice(&nonce_bytes);
 
@@ -177,7 +176,7 @@ impl BlobIndex {
 
         // Derive a key for index and let nonce be the index file number.
         let key = self.keys.derive_symmetric_key(KEY_DERIVATION_CONSTANT);
-        let cipher = Aes256Gcm::new(Key::from_slice(&key));
+        let cipher = Aes256Gcm::new(&key.into());
         let nonce_bytes = self.counter_to_nonce(new_file_num);
         let nonce = Nonce::from_slice(&nonce_bytes);
 
