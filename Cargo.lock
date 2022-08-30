@@ -1207,6 +1207,7 @@ dependencies = [
 name = "pluto-node-service-web"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "mime_guess",
  "pluto-macros",
  "pluto-network",
@@ -1214,6 +1215,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
+ "sha2 0.10.2",
  "tokio",
  "tracing",
  "tracing-subscriber",

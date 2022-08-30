@@ -1,4 +1,5 @@
-import {defineStore} from 'pinia'
+import { defineStore } from 'pinia'
+import { BASE_URL } from "@/constants";
 
 export interface Path {
     path_id: number | null,
@@ -28,7 +29,7 @@ export interface Job {
     paths: Path[]
 }
 
-const backupJobEndpoint = "/api/backup_jobs";
+const backupJobEndpoint = BASE_URL + "/api/backup_jobs";
 const jobPathEndpointName = "paths";
 
 export const useJobsStore = defineStore('jobsStore', {

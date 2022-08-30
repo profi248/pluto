@@ -23,10 +23,21 @@ table! {
     }
 }
 
+table! {
+    node (pubkey) {
+        pubkey -> Binary,
+        added -> Integer,
+        last_seen -> Nullable<Integer>,
+        pinned -> Integer,
+        label -> Nullable<Text>,
+    }
+}
+
 joinable!(backup_job_path -> backup_job (job_id));
 
 allow_tables_to_appear_in_same_query!(
     backup_job,
     backup_job_path,
     blob_storage,
+    node,
 );

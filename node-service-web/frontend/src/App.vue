@@ -3,9 +3,7 @@ import { RouterLink, RouterView } from 'vue-router'
 import { ref, onMounted } from 'vue'
 
 import Setup from "@/components/Setup.vue";
-import { useJobsStore } from "@/stores/jobs";
-
-const jobs = useJobsStore();
+import { BASE_URL } from "@/constants";
 
 let fetchTimer: number | undefined = undefined;
 let status = ref({
@@ -16,13 +14,12 @@ let status = ref({
 let clientConnected = ref(true);
 let needsSetup = ref(false);
 
-const statusEndpoint = "/api/status";
+const statusEndpoint = BASE_URL + "/api/status";
 
 onMounted(async () => {
   await fetchStatus();
   needsSetup.value = !status.value.setup_complete;
   await autoRefreshStatus();
-  await jobs.refreshJobs();
 });
 
 async function fetchStatus() {
@@ -49,8 +46,8 @@ async function autoRefreshStatus() {
       </a>
       <nav>
         <ul class="nav nav-pills">
-          <li class="nav-item"><RouterLink to="/" class="nav-link">Backups</RouterLink></li>
-          <li class="nav-item"><RouterLink to="/" class="nav-link">Nodes</RouterLink></li>
+          <li class="nav-item"><RouterLink to="/backup_jobs" class="nav-link">Backups</RouterLink></li>
+          <li class="nav-item"><RouterLink to="/nodes" class="nav-link">Nodes</RouterLink></li>
           <li class="nav-item"><RouterLink to="/" class="nav-link">Settings</RouterLink></li>
         </ul>
       </nav>
