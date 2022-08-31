@@ -106,7 +106,7 @@ function checkPassphraseLength() {
       <Transition name="fade">
         <div v-if="!loading" class="d-flex flex-column align-items-center">
           <h1 class="title display-3 mb-4">Welcome to pluto</h1>
-          <div class="welcome border border-2 rounded-5 bg-light p-4 col-lg-7 col-md-12">
+          <div class="welcome border border-2 rounded-3 bg-light p-4 col-lg-7 col-md-12">
             <Transition name="fade" mode="out-in">
               <div key="1" v-if="!showPassphraseInput && !showResult">
                 <h4 class="text-center">Setup</h4>
@@ -199,9 +199,5 @@ function checkPassphraseLength() {
   min-height: 80px;
   height: 160px;
   max-height: 260px;
-}
-
-.welcome {
-  border-radius: .4em;
 }
 </style>
