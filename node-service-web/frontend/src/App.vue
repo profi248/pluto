@@ -42,6 +42,7 @@ async function autoRefreshStatus() {
   <div class="container">
     <header class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom">
       <a href="/" class="d-flex align-items-center col-md-3 mb-2 mb-md-0 text-dark text-decoration-none">
+        <img id="logo" src="/images/icon-small.png" alt="logo">
         <span class="fs-5 navbar-brand">pluto</span>
       </a>
       <nav>
@@ -117,8 +118,15 @@ async function autoRefreshStatus() {
   font-family: 'Mulish', sans-serif;
 }
 
+#logo {
+  height: 42px;
+  margin-right: 6px;
+}
+
 .navbar-brand {
   font-weight: 600;
+  transform: translateY(-2px);
+  letter-spacing: .3px;
 }
 
 .conn-circle {
