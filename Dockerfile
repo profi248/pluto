@@ -1,6 +1,6 @@
 # compile and run backup coordinator
 
-FROM lukemathwalker/cargo-chef:latest-rust-1.61.0 AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.63.0 AS chef
 WORKDIR app
 
 FROM chef AS planner

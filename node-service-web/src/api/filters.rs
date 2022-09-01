@@ -78,6 +78,12 @@ pub fn delete_job_path() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and_then(routes::backup_job::delete_job_path)
 }
 
+pub fn get_nodes() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("api" / "nodes")
+        .and(warp::get())
+        .and_then(routes::node::get_nodes)
+}
+
 fn with_client(client: Client) -> impl Filter<Extract=(Client, ), Error=std::convert::Infallible> + Clone {
     warp::any().map(move || (client.clone()))
 }

@@ -6,3 +6,25 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+pluto-network = { path = "../network" }
+
+# Compression
+zstd = { version = "0.11", features = ["experimental"] }
+
+# Async
+tokio = { version = "1.19.2", features = [ "sync" ] }
+
+# Cryptography
+sha2 = "0.10.2"
+aes-gcm = "0.10.1"
+rand_chacha = "0.3.1"
+getrandom = "0.2.7"
+rand = "0.8.5"
+
+# Serialization
+bincode = "1.3.3"
+serde = { version = "1.0.137", features = [ "derive" ] }
+hex = "0.4.3"
+
+# Logging
+tracing = "0.1.34"

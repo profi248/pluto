@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build_all_linux:
+  build-all-linux:
     runs-on: ubuntu-latest
     name: Build and test all on Linux
     steps:
@@ -37,8 +37,7 @@ jobs:
       with:
         name: linux-node
         path: target/release/pluto-node-service-web
-
-  build_client_windows:
+  build-client-windows:
     runs-on: windows-2019
     name: Build and test client on Windows
     env:
@@ -72,8 +71,7 @@ jobs:
       with:
         name: windows-node
         path: target/release/pluto-node-service-web.exe
-
-  build_client_mac:
+  build-client-mac:
     runs-on: macos-latest
     name: Build and test client on macOS
     steps:
@@ -94,3 +92,15 @@ jobs:
         with:
           name: macos-node
           path: target/release/pluto-node-service-web
+#  miri-linux:
+#    name: Test with Miri on Linux
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#      - name: Install Miri
+#        run: |
+#          rustup toolchain install nightly --component miri
+#          rustup override set nightly
+#          cargo miri setup
+#      - name: Test with Miri
+#        run: cargo miri test --verbose

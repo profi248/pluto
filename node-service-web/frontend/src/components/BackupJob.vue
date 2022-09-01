@@ -142,6 +142,18 @@ async function save() {
     return;
   }
 
+  for (let path of mergePaths(folders.value, ignores.value)) {
+    if (path.path.length === 0) {
+      alert("Folder path or ignore pattern cannot be empty");
+      return;
+    }
+
+    if (path.path.length > 32760) {
+      alert("Folder path or ignore pattern is too long");
+      return;
+    }
+  }
+
   try {
     let job: JobCreate | JobUpdate;
     if (props.new) {
@@ -149,8 +161,6 @@ async function save() {
         name: jobName.value,
         paths: mergePaths(folders.value, ignores.value)
       };
-      job.name = jobName.value;
-      job.paths = mergePaths(folders.value, ignores.value);
 
       await jobs.createJob(job);
     } else {
@@ -165,7 +175,7 @@ async function save() {
       await jobs.updateJob(jobNew);
     }
   } catch (e) {
-    alert("Error: " + e);
+    alert(e);
   }
 
   await router.push('/');

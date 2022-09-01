@@ -109,6 +109,7 @@ impl std::fmt::Debug for Keys {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test_mnemonic() {
     for _ in 0..10000 {
         let keys = Keys::generate();
@@ -120,6 +121,7 @@ fn test_mnemonic() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test_mnemonic_checksum() {
     let keys = Keys::generate();
     let seed = keys.seed().clone();
@@ -131,6 +133,7 @@ fn test_mnemonic_checksum() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)]
 fn test_symmetric_key_derivation() {
     let keys_a = Keys::generate();
     let seed = keys_a.seed().clone();

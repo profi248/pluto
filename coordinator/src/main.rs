@@ -33,7 +33,7 @@ lazy_static::lazy_static! {
 lazy_static::lazy_static! {
     pub static ref COORDINATOR_PUBKEY: PublicKey = {
         let array: [u8; 32] = base64::decode(
-            &std::env::var("COORDINATOR_PUBKEY").expect("Coordiator pubkey not provided")
+            &std::env::var("COORDINATOR_PUBKEY").expect("Coordinator pubkey not provided")
         ).expect("Pubkey not valid base64").try_into().expect("Invalid pubkey length");
 
         PublicKey::from(array)
@@ -41,7 +41,7 @@ lazy_static::lazy_static! {
 
     pub static ref COORDINATOR_PRIVKEY: StaticSecret = {
         let array: [u8; 32] = base64::decode(
-            &std::env::var("COORDINATOR_PRIVKEY").expect("Coordiator privkey not provided")
+            &std::env::var("COORDINATOR_PRIVKEY").expect("Coordinator privkey not provided")
         ).expect("Pubkey not valid base64").try_into().expect("Invalid privkey length");
 
         StaticSecret::from(array)

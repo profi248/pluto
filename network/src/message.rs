@@ -9,7 +9,7 @@ use hkdf::Hkdf;
 use sha2::Sha256;
 
 // Authenticated Encryption with Associated Data
-use aes_gcm::{ Aes256Gcm, NewAead, aead::Aead };
+use aes_gcm::{ Aes256Gcm, aead::Aead, KeyInit };
 
 use std::marker::PhantomData;
 

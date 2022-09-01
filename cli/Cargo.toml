@@ -13,7 +13,7 @@ pluto-node = { path = "../node" }
 tokio = { version = "1.18.2", features = [ "rt-multi-thread", "macros", "sync", "signal" ] }
 
 # CLI
-inquire = "0.2.1"
+inquire = "0.3.0"
 
 # Logging
 tracing = "0.1.34"

@@ -3,9 +3,7 @@ import { RouterLink, RouterView } from 'vue-router'
 import { ref, onMounted } from 'vue'
 
 import Setup from "@/components/Setup.vue";
-import { useJobsStore } from "@/stores/jobs";
-
-const jobs = useJobsStore();
+import { BASE_URL } from "@/constants";
 
 let fetchTimer: number | undefined = undefined;
 let status = ref({
@@ -16,13 +14,12 @@ let status = ref({
 let clientConnected = ref(true);
 let needsSetup = ref(false);
 
-const statusEndpoint = "/api/status";
+const statusEndpoint = BASE_URL + "/api/status";
 
 onMounted(async () => {
   await fetchStatus();
   needsSetup.value = !status.value.setup_complete;
   await autoRefreshStatus();
-  await jobs.refreshJobs();
 });
 
 async function fetchStatus() {
@@ -45,12 +42,13 @@ async function autoRefreshStatus() {
   <div class="container">
     <header class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom">
       <a href="/" class="d-flex align-items-center col-md-3 mb-2 mb-md-0 text-dark text-decoration-none">
+        <img id="logo" src="/images/icon-small.png" alt="logo">
         <span class="fs-5 navbar-brand">pluto</span>
       </a>
       <nav>
         <ul class="nav nav-pills">
-          <li class="nav-item"><RouterLink to="/" class="nav-link">Backups</RouterLink></li>
-          <li class="nav-item"><RouterLink to="/" class="nav-link">Nodes</RouterLink></li>
+          <li class="nav-item"><RouterLink to="/backup_jobs" class="nav-link">Backups</RouterLink></li>
+          <li class="nav-item"><RouterLink to="/nodes" class="nav-link">Nodes</RouterLink></li>
           <li class="nav-item"><RouterLink to="/" class="nav-link">Settings</RouterLink></li>
         </ul>
       </nav>
@@ -120,8 +118,15 @@ async function autoRefreshStatus() {
   font-family: 'Mulish', sans-serif;
 }
 
+#logo {
+  height: 42px;
+  margin-right: 6px;
+}
+
 .navbar-brand {
   font-weight: 600;
+  transform: translateY(-2px);
+  letter-spacing: .3px;
 }
 
 .conn-circle {

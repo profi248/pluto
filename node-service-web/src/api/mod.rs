@@ -29,6 +29,7 @@ pub async fn run(addr: impl Into<std::net::SocketAddr>, client: &Client, keys: &
         .or(filters::create_job_path())
         .or(filters::update_job_path())
         .or(filters::delete_job_path())
+        .or(filters::get_nodes())
 
         .or(dist);
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useJobsStore } from '@/stores/jobs';
 import type { Job } from '@/stores/jobs'
+import { onMounted } from "vue";
 
 const jobs = useJobsStore();
 
@@ -13,6 +14,10 @@ async function deleteJob(job: Job) {
     }
   }
 }
+
+onMounted(async () => {
+  await jobs.refreshJobs();
+});
 </script>
 
 <template>
