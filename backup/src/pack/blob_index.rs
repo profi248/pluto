@@ -2,7 +2,6 @@
 #[path = "blob_index_tests.rs"]
 mod blob_index_tests;
 
-use std::cmp::max;
 use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
@@ -51,10 +50,12 @@ pub(crate) struct BlobIndex {
     /// Index entries waiting to be written to disk.
     items_buf: Entry,
     /// All blob hashes that have been queued for writing or have already been written.
+    // todo: wat is this
     blobs_queued: HashSet<BlobHash>,
     /// Numeric ID of the last written index file.
     last_file_num: u32,
     /// Keys used to encrypt index files.
+    // todo: reconsider this
     keys: Keys,
     /// Keeps track if index has been successfully flushed to disk.
     dirty: bool,
@@ -67,13 +68,17 @@ pub(crate) struct IndexPackfileHandle {
 
 impl BlobIndex {
     pub fn new(output_path: String, keys: Keys) -> Result<Self, PackfileError> {
-        fs::create_dir_all(output_path.clone())?;
-        let index_files = fs::read_dir(output_path.clone())?;
+        fs::create_dir_all(&output_path)?;
+        let index_files = fs::read_dir(&output_path)?;
 
         let mut max_num = 0;
         for entry in index_files {
+            // todo: entry may be a directory
             // Ignore files that don't match our pattern.
-            max_num = max((entry?.file_name().into_string().map_err(PackfileError::InvalidString)?).parse::<u32>().unwrap_or(0), max_num);
+            max_num = max_num.max(
+                (entry?.file_name().into_string().map_err(PackfileError::InvalidString)?)
+                .parse::<u32>().unwrap_or(0)
+            );
         }
 
         Ok(Self {
@@ -143,18 +148,20 @@ impl BlobIndex {
 
         for entry in index_files {
             let entry = entry?;
+            // todo: ignore directories
             // Ignore files that don't match our pattern.
             let file_num = (entry.file_name().into_string().map_err(PackfileError::InvalidString)?).parse::<u32>();
-            if file_num.is_ok() {
+            if let Ok(file_num) = file_num {
                 let mut file = File::open(entry.path())?;
                 let mut buf: Vec<u8> = Default::default();
                 file.read_to_end(&mut buf)?;
 
                 let key = self.keys.derive_symmetric_key(KEY_DERIVATION_CONSTANT);
                 let cipher = Aes256Gcm::new(&key.into());
-                let nonce_bytes = self.counter_to_nonce(file_num.unwrap());
+                let nonce_bytes = self.counter_to_nonce(file_num);
                 let nonce = Nonce::from_slice(&nonce_bytes);
 
+                // todo: associated data, read flush function for details
                 cipher.decrypt_in_place(nonce, b"", &mut buf)?;
 
                 let mut items: Entry = bincode::options().with_varint_encoding().deserialize(&buf)?;
@@ -180,6 +187,7 @@ impl BlobIndex {
         let nonce_bytes = self.counter_to_nonce(new_file_num);
         let nonce = Nonce::from_slice(&nonce_bytes);
 
+        // todo: add associated data (to make sure we're decrypting a index so "index" could work)
         cipher.encrypt_in_place(nonce, b"", &mut buf)?;
 
         let file_path = format!("{}/{:0>10}", self.output_path, new_file_num);

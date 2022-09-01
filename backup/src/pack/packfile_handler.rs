@@ -31,8 +31,8 @@ const KEY_DERIVATION_CONSTANT_HEADER: &[u8] = b"header";
 const PACKFILE_FOLDER: &str = "pack";
 const INDEX_FOLDER: &str = "index";
 
-/// A class used for writing and reading packfiles, a file format used for storing blobs efficiently
-/// and securely. Packfiles can contain one or more blobs, and are useful from preventing the
+/// A struct used for writing and reading packfiles, a file format used for storing blobs efficiently
+/// and securely. Packfiles can contain one or more blobs, and are useful for preventing the
 /// existence of many small loose files, and instead pack those small files together so all
 /// packfiles are around the same size. PackfileHandler is also responsible for deduplicating blobs
 /// so identical data is only stored once. Along with the packfiles, an index is also stored in
