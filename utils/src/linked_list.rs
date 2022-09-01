@@ -1,4 +1,4 @@
-use std::{ ptr, sync::atomic::Ordering };
+use std::{ ptr, sync::atomic::Ordering, marker::PhantomData };
 
 #[cfg(not(loom))]
 use std::sync::atomic::AtomicPtr;
@@ -15,6 +15,9 @@ use loom::sync::atomic::AtomicPtr;
 /// that no threads have references to nodes in the linked list.
 pub struct LinkedList<T> {
     root: AtomicPtr<Node<T>>,
+
+    // Transfer Send- and Sync-ness.
+    phantom: PhantomData<Node<T>>,
 }
 
 // todo: support Arc/Weak for node references
@@ -24,7 +27,8 @@ pub struct Node<T> {
     pub value: T,
     next: AtomicPtr<Node<T>>,
 
-    list: *const LinkedList<T>,
+    // Remove Send and Sync
+    phantom: PhantomData<*mut ()>,
 }
 
 unsafe impl<T: Send + Sync> Send for Node<T> { }
@@ -35,6 +39,7 @@ impl<T> LinkedList<T> {
     pub fn new() -> Self {
         Self {
             root: AtomicPtr::new(ptr::null_mut()),
+            phantom: PhantomData,
         }
     }
 
@@ -62,7 +67,7 @@ impl<T> LinkedList<T> {
         // Check if null.
         if root == ptr::null_mut() {
             // Initialise value.
-            match self.init(Node::new(self, value.take().unwrap())) {
+            match self.init(Node::new(value.take().unwrap())) {
                 // Return node if successful.
                 Ok(node) => return unsafe { &*node },
                 // Root was changed, continue with default behaviour.
@@ -75,7 +80,7 @@ impl<T> LinkedList<T> {
             root = self.root.load(Ordering::Acquire);
 
             // Initialise new node.
-            let node = Node::new(self, value.take().unwrap());
+            let node = Node::new(value.take().unwrap());
             node.next.store(root, Ordering::Relaxed);
             let pointer = Box::leak(Box::new(node));
 
@@ -144,15 +149,29 @@ impl<T> LinkedList<T> {
     pub fn front_mut(&mut self) -> Option<&mut Node<T>> {
         unsafe { self.root.load(Ordering::Acquire).as_mut() }
     }
+
+    /// Iterates over the linked list from the current front node.
+    pub fn iter(&self) -> Iter<T> {
+        Iter {
+            node: self.front()
+        }
+    }
+
+    /// Iterates over the linked list mutably from the current front node.
+    pub fn iter_mut(&mut self) -> IterMut<T> {
+        IterMut {
+            node: self.front_mut().map(|p| p as *mut _),
+            phantom: PhantomData
+        }
+    }
 }
 
 impl<T> Node<T> {
-    fn new(list: *const LinkedList<T>, value: T) -> Self {
+    fn new(value: T) -> Self {
         Self {
             value,
             next: AtomicPtr::new(ptr::null_mut()),
-
-            list,
+            phantom: PhantomData,
         }
     }
 
@@ -160,9 +179,9 @@ impl<T> Node<T> {
         (*self).value
     }
 
-    /// Inserts a new node after this node.
-    pub fn insert_after(&self, value: T) -> &Node<T> {
-        let new = Box::leak(Box::new(Self::new(self.list, value)));
+    /// Pushes a new node after this node.
+    pub fn push_next(&self, value: T) -> &Node<T> {
+        let new = Box::leak(Box::new(Self::new(value)));
 
         loop {
             let next = self.next.load(Ordering::Acquire);
@@ -198,7 +217,6 @@ impl<T> Node<T> {
         unsafe { self.next.load(Ordering::Acquire).as_mut() }
     }
 
-    // todo: add unit tests for this.
     /// Removes the value after this node from the linked list.
     pub fn pop_next(&mut self) -> Option<T> {
         let mut next;
@@ -251,6 +269,43 @@ impl<T> Drop for LinkedList<T> {
     }
 }
 
+pub struct Iter<'a, T> {
+    node: Option<&'a Node<T>>
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let value = &self.node?.value;
+        self.node = self.node?.next();
+
+        Some(value)
+    }
+}
+
+pub struct IterMut<'a, T> {
+    node: Option<*mut Node<T>>,
+
+    phantom: PhantomData<&'a mut Node<T>>
+}
+
+// todo: double check this lol
+unsafe impl<'a, T: Send> Send for IterMut<'a, T> { }
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe {
+            let value = &mut (*self.node?).value;
+            self.node = (*self.node?).next_mut().map(|p| p as *mut _);
+
+            Some(value)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -268,11 +323,11 @@ mod tests {
             let node_1337 = list.push_front(1337);
             assert_eq!(node_1337.value, 1337);
 
-            let node_2 = node_1.insert_after(2);
+            let node_2 = node_1.push_next(2);
             assert_eq!(node_2.value, 2);
-            let node_3 = node_2.insert_after(3);
+            let node_3 = node_2.push_next(3);
             assert_eq!(node_3.value, 3);
-            let node_4 = node_1337.insert_after(4);
+            let node_4 = node_1337.push_next(4);
             assert_eq!(node_4.value, 4);
         }
 
@@ -304,6 +359,27 @@ mod tests {
         let val = list.pop_front();
         assert_eq!(val, None);
 
+        list.push_front(0);
+        list.push_front(1);
+        list.push_front(2);
+        list.push_front(3);
+        list.push_front(4);
+        list.push_front(5);
+
+        let first = list.front_mut().unwrap();
+
+        assert_eq!(first.pop_next(), Some(4));
+        assert_eq!(first.pop_next(), Some(3));
+        assert_eq!(list.pop_front(), Some(5));
+
+        let first = list.front_mut().unwrap();
+
+        assert_eq!(first.value, 2);
+        assert_eq!(first.pop_next(), Some(1));
+        assert_eq!(first.pop_next(), Some(0));
+        assert_eq!(first.pop_next(), None);
+        assert_eq!(first.pop_next(), None);
+
 
         let mut list: LinkedList<String> = LinkedList::new();
 
@@ -322,32 +398,18 @@ mod tests {
         assert_eq!(val, None);
     }
 
-    #[cfg(loom)]
+    #[cfg(not(loom))]
     #[test]
-    fn loom_test() {
-        loom::model(|| {
-            let mut list = LinkedList::<i32>::new();
+    fn test_iter() {
+        let list: LinkedList<i32> = LinkedList::new();
 
-            {
-                let node_3 = list.push_front(3);
-                assert_eq!(node_3.value, 3);
-                let node_2 = list.push_front(2);
-                assert_eq!(node_2.value, 2);
-                let node_1 = list.push_front(1);
-                assert_eq!(node_1.value, 1);
-                let node_0 = list.push_front(0);
-                assert_eq!(node_0.value, 0);
-            }
+        (0..100).for_each(|i| { list.push_front(i); });
 
-            assert_eq!(list.pop_front(), Some(0));
+        let values: Vec<&i32> = list.iter().collect();
 
-            let mut node = list.front();
+        assert_eq!(values.len(), 100);
 
-            while let Some(n) = node {
-                println!("{}", n.value);
-                node = n.next();
-            }
-        });
+        values.into_iter().rev().enumerate().for_each(|(i, &v)| assert_eq!(i as i32, v));
     }
 
     #[cfg(loom)]
@@ -357,7 +419,7 @@ mod tests {
         use loom::sync::Arc;
 
         loom::model(|| {
-            let mut shared_list = Arc::new(LinkedList::<i32>::new());
+            let shared_list = Arc::new(LinkedList::<i32>::new());
 
             let clone1 = shared_list.clone();
 
@@ -375,11 +437,11 @@ mod tests {
                 let node_5 = shared_list.push_front(5);
                 assert_eq!(node_5.value, 5);
 
-                node_1.insert_after(6);
-                node_2.insert_after(7);
-                node_3.insert_after(8);
-                node_4.insert_after(9);
-                node_5.insert_after(10);
+                node_1.push_next(6);
+                node_2.push_next(7);
+                node_3.push_next(8);
+                node_4.push_next(9);
+                node_5.push_next(10);
             });
 
             {
@@ -394,21 +456,20 @@ mod tests {
                 let node_5 = shared_list.push_front(-5);
                 assert_eq!(node_5.value, -5);
 
-                node_1.insert_after(-6);
-                node_2.insert_after(-7);
-                node_3.insert_after(-8);
-                node_4.insert_after(-9);
-                node_5.insert_after(-10);
+                node_1.push_next(-6);
+                node_2.push_next(-7);
+                node_3.push_next(-8);
+                node_4.push_next(-9);
+                node_5.push_next(-10);
             }
 
             thread_1.join().unwrap();
 
-            let mut node = shared_list.front();
-
-            while let Some(n) = node {
-                println!("{}", n.value);
-                node = n.next();
+            for n in shared_list.iter() {
+                println!("{}", n);
             }
         });
     }
+
+
 }

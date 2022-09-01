@@ -44,8 +44,8 @@ pub trait IterBits {
     /// Iterates over all bits in the number.
     fn iter_bits(&self) -> BitsIter;
     /// Iterates over the first `n` bits in each number.
-    /// 
-    /// Can be used to simulate arbitrarily sized unsigned binary 
+    ///
+    /// Can be used to simulate arbitrarily sized unsigned binary
     /// numbers.
     fn iter_n_bits(&self, n: usize) -> BitsIter;
 }
@@ -148,6 +148,7 @@ __impl_iter_bits!(
     u64 => 64
 );
 
+#[cfg(not(loom))]
 #[test]
 fn test_iter_n_bits() {
     // it doesn't like that its read in a macro.

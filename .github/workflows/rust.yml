@@ -27,6 +27,8 @@ jobs:
       run: cargo build --release --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Run loom tests
+      run: LOOM_MAX_PREEMPTIONS=5 RUSTFLAGS='--cfg loom' cargo test -p pluto-utils --release
     - uses: actions/upload-artifact@v3
       with:
         name: linux-coordinator
@@ -35,11 +37,11 @@ jobs:
       with:
         name: linux-node
         path: target/release/pluto-node-service-web
-  
+
   build_client_windows:
     runs-on: windows-2019
     name: Build and test client on Windows
-    env: 
+    env:
       SQLITE3_LIB_DIR: "C:\\sqlite"
     steps:
     - name: "Install SQLite"
@@ -70,7 +72,7 @@ jobs:
       with:
         name: windows-node
         path: target/release/pluto-node-service-web.exe
-  
+
   build_client_mac:
     runs-on: macos-latest
     name: Build and test client on macOS

@@ -67,7 +67,7 @@ impl Keys {
     /// Creates the [`X25519`](x25519_dalek) key pair and a symmetric master key from a [`Seed`] object.
     pub fn from_seed(seed: Seed) -> Self {
         let entropy = seed.entropy();
-        
+
         Self::from_entropy(*entropy)
     }
 
