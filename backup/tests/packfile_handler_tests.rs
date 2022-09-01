@@ -5,12 +5,13 @@ use tokio::fs;
 use tokio_stream::{ StreamExt, wrappers::ReadDirStream };
 
 use pluto_backup::pack::{
-    packfile_handler::{PackfileHandler, BLOB_MAX_UNCOMPRESSED_SIZE },
-    BlobKind, Blob, CompressionKind,
+    packfile_handler::{ PackfileHandler, BLOB_MAX_UNCOMPRESSED_SIZE },
+    BlobKind, Blob
 };
 use pluto_network::key::Keys;
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_packer() {
     let dir = format!("{}/pack", std::env::temp_dir().to_str().unwrap());
     fs::remove_dir_all(dir.clone()).await.ok();
@@ -44,6 +45,7 @@ async fn test_packer() {
 }
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_packer_deduplication() {
     let dir = format!("{}/pack2", std::env::temp_dir().to_str().unwrap());
     fs::remove_dir_all(dir.clone()).await.ok();
@@ -99,6 +101,7 @@ async fn test_packer_deduplication() {
 }
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_packer_rand() {
     let dir = format!("{}/pack3", std::env::temp_dir().to_str().unwrap());
     fs::remove_dir_all(dir.clone()).await.ok();

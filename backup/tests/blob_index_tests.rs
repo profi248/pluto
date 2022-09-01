@@ -8,6 +8,7 @@ use pluto_network::key::Keys;
 use pluto_backup::pack::blob_index::BlobIndex;
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_index() {
     let dir = format!("{}/idx", std::env::temp_dir().to_str().unwrap());
     let keys = Keys::from_entropy([0; 32]);
@@ -67,6 +68,7 @@ async fn test_index() {
 }
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_index_push() {
     let dir = format!("{}/idx2", std::env::temp_dir().to_str().unwrap());
     let keys = Keys::from_entropy([0; 32]);
@@ -113,6 +115,7 @@ async fn test_index_push() {
 }
 
 #[tokio::test]
+#[cfg_attr(miri, ignore)]
 async fn test_index_push_rand() {
     let dir = format!("{}/idx3", std::env::temp_dir().to_str().unwrap());
     let entropy: Vec<u8> = (0..32).collect();
