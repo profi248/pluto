@@ -73,7 +73,7 @@ impl BlobIndex {
         let mut max_num = 0;
         for entry in index_files {
             // Ignore files that don't match our pattern.
-            max_num = max((entry?.file_name().into_string()?).parse::<u32>().unwrap_or(0), max_num);
+            max_num = max((entry?.file_name().into_string().map_err(PackfileError::InvalidString)?).parse::<u32>().unwrap_or(0), max_num);
         }
 
         Ok(Self {
@@ -144,7 +144,7 @@ impl BlobIndex {
         for entry in index_files {
             let entry = entry?;
             // Ignore files that don't match our pattern.
-            let file_num = (entry.file_name().into_string()?).parse::<u32>();
+            let file_num = (entry.file_name().into_string().map_err(PackfileError::InvalidString)?).parse::<u32>();
             if file_num.is_ok() {
                 let mut file = File::open(entry.path())?;
                 let mut buf: Vec<u8> = Default::default();

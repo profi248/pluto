@@ -9,19 +9,19 @@ edition = "2021"
 pluto-network = { path = "../network" }
 
 # Database
-diesel = { version = "1.4.8", features = [ "postgres", "chrono" ] }
-deadpool-diesel = { version = "0.3.1", features = [ "postgres" ] }
+diesel = { version = "1.4.8", features = ["postgres", "chrono"] }
+deadpool-diesel = { version = "0.3.1", features = ["postgres"] }
 diesel_migrations = "1.4.0"
 
 # Cryptography
 getrandom = "0.2.6"
 
 # Async
-tokio = { version = "1.18.2", features = [ "rt-multi-thread", "macros", "sync", "signal" ] }
+tokio = { version = "1.18.2", features = ["rt-multi-thread", "macros", "sync", "signal"] }
 
 # Logging
 tracing = "0.1.34"
-tracing-subscriber = { version = "0.3.11", features = [ "local-time", "parking_lot" ] }
+tracing-subscriber = { version = "0.3.11", features = ["local-time", "parking_lot"] }
 
 # Utils
 dotenv = "0.15.0"

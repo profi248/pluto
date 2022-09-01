@@ -9,7 +9,7 @@ edition = "2021"
 pluto-network = { path = "../network" }
 
 # Database
-diesel = { version = "1.4.8", features = [ "sqlite", "chrono" ] }
+diesel = { version = "1.4.8", features = ["sqlite", "chrono"] }
 diesel_migrations = "1.4.0"
 
 # Cryptography
@@ -24,5 +24,5 @@ lazy_static = "1.4.0"
 async-trait = "0.1.56"
 dirs = "4.0.0"
 base64 = "0.13.0"
-serde = { version = "1.0.137", features = [ "derive" ] }
+serde = { version = "1.0.137", features = ["derive"] }
 chrono = "0.4.19"

@@ -51,46 +51,26 @@ struct Tree {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum PackfileError {
+    #[error("Invalid packfile header size")]
     InvalidHeaderSize,
+    #[error("Packfile too large")]
     PackfileTooLarge,
+    #[error("Blob found in index, but not in packfile. Index might be out of date")]
     IndexHeaderMismatch,
+    #[error("Blob too large")]
     BlobTooLarge,
+    #[error("Duplicate blob in packfile index")]
     DuplicateBlob,
-    IoError(std::io::Error),
-    CryptoError(aes_gcm::Error),
-    SerializationError(bincode::Error),
-    GetrandomError(getrandom::Error),
-    StringError(OsString)
-}
-
-impl From<std::io::Error> for PackfileError {
-    fn from(e: std::io::Error) -> Self {
-        Self::IoError(e)
-    }
-}
-
-impl From<aes_gcm::Error> for PackfileError {
-    fn from(e: aes_gcm::Error) -> Self {
-        Self::CryptoError(e)
-    }
-}
-
-impl From<bincode::Error> for PackfileError {
-    fn from(e: bincode::Error) -> Self {
-        Self::SerializationError(e)
-    }
-}
-
-impl From<getrandom::Error> for PackfileError {
-    fn from(e: getrandom::Error) -> Self {
-        Self::GetrandomError(e)
-    }
-}
-
-impl From<OsString> for PackfileError {
-    fn from(e: OsString) -> Self {
-        Self::StringError(e)
-    }
+    #[error("{0}")]
+    IoError(#[from] std::io::Error),
+    #[error("Data decryption/encryption error")]
+    CryptoError(#[from] aes_gcm::Error),
+    #[error("{0}")]
+    SerializationError(#[from] bincode::Error),
+    #[error("{0}")]
+    GetrandomError(#[from] getrandom::Error),
+    #[error("Invalid Unicode string: {0:?}")]
+    InvalidString(OsString),
 }
