@@ -1,11 +1,7 @@
-#[cfg(test)]
-#[path = "blob_index_tests.rs"]
-mod blob_index_tests;
-
 use std::collections::HashSet;
-use std::fs;
-use std::fs::File;
-use std::io::{ Read, Write };
+use tokio::fs::{ self, File };
+use tokio::io::{ AsyncReadExt, AsyncWriteExt };
+use tokio_stream::{ StreamExt, wrappers::ReadDirStream };
 
 use aes_gcm::{ AeadInPlace, Aes256Gcm, Key, Nonce, KeyInit };
 use bincode::Options;
@@ -42,7 +38,7 @@ type Entry = Vec<(BlobHash, PackfileId)>;
 /// (3 bytes of hash + 1 byte of length) instead of 32 bytes. Size per index entry is
 /// 4-33 + 12 bytes, or 20-45 in total. For 2 500 000 stored blobs (that is about 5 TB of data
 /// or 2 500 000 individual files), total index size would range from about 50 to 112 megabytes.
-pub(crate) struct BlobIndex {
+pub struct BlobIndex {
     /// Path to the index folder.
     output_path: String,
     /// Index entries loaded from disk.
@@ -61,18 +57,18 @@ pub(crate) struct BlobIndex {
     dirty: bool,
 }
 
-pub(crate) struct IndexPackfileHandle {
+pub struct IndexPackfileHandle {
     /// Blobs contained in the a currently constructed packfile.
     blobs: Vec<BlobHash>
 }
 
 impl BlobIndex {
-    pub fn new(output_path: String, keys: Keys) -> Result<Self, PackfileError> {
-        fs::create_dir_all(&output_path)?;
-        let index_files = fs::read_dir(&output_path)?;
+    pub async fn new(output_path: String, keys: Keys) -> Result<Self, PackfileError> {
+        fs::create_dir_all(&output_path).await?;
+        let mut index_files = ReadDirStream::new(fs::read_dir(&output_path).await?);
 
         let mut max_num = 0;
-        for entry in index_files {
+        while let Some(entry) = index_files.next().await {
             // todo: entry may be a directory
             // Ignore files that don't match our pattern.
             max_num = max_num.max(
@@ -108,23 +104,23 @@ impl BlobIndex {
         Ok(())
     }
 
-    pub fn finalize_packfile(&mut self, handle: &IndexPackfileHandle, packfile_hash: PackfileId) -> Result<(), PackfileError> {
+    pub async fn finalize_packfile(&mut self, handle: &IndexPackfileHandle, packfile_hash: PackfileId) -> Result<(), PackfileError> {
         for blob_hash in handle.blobs.iter() {
-            self.push(blob_hash, &packfile_hash)?;
+            self.push(blob_hash, &packfile_hash).await?;
         }
 
         Ok(())
     }
 
-    pub fn is_blob_duplicate(&mut self, blob_hash: &BlobHash) -> Result<bool, PackfileError> {
+    pub async fn is_blob_duplicate(&mut self, blob_hash: &BlobHash) -> Result<bool, PackfileError> {
         if self.blobs_queued.contains(blob_hash) { return Ok(true); }
-        if self.find_packfile(blob_hash)?.is_some() { return Ok(true); }
+        if self.find_packfile(blob_hash).await?.is_some() { return Ok(true); }
 
         Ok(false)
     }
 
-    pub fn find_packfile(&mut self, blob_hash: &BlobHash) -> Result<Option<PackfileId>, PackfileError> {
-        if self.items.len() == 0 { self.load()? }
+    pub async fn find_packfile(&mut self, blob_hash: &BlobHash) -> Result<Option<PackfileId>, PackfileError> {
+        if self.items.len() == 0 { self.load().await? }
 
         match self.items.binary_search_by_key(&blob_hash, |(a, _)| &a) {
             Ok(entry_idx) => { Ok(Some(self.items[entry_idx].1)) }
@@ -132,29 +128,29 @@ impl BlobIndex {
         }
     }
 
-    fn push(&mut self, blob_hash: &BlobHash, packfile_hash: &PackfileId) -> Result<(), PackfileError> {
+    pub async fn push(&mut self, blob_hash: &BlobHash, packfile_hash: &PackfileId) -> Result<(), PackfileError> {
         self.items_buf.push((*blob_hash, *packfile_hash));
         self.dirty = true;
 
         if self.items_buf.len() >= MAX_FILE_ENTRIES {
-            self.flush()?
+            self.flush().await?
         }
 
         Ok(())
     }
 
-    fn load(&mut self) -> Result<(), PackfileError> {
-        let index_files = fs::read_dir(&self.output_path)?;
+    async fn load(&mut self) -> Result<(), PackfileError> {
+        let mut index_files = ReadDirStream::new(fs::read_dir(&self.output_path).await?);
 
-        for entry in index_files {
+        while let Some(entry) = index_files.next().await {
             let entry = entry?;
             // todo: ignore directories
             // Ignore files that don't match our pattern.
             let file_num = (entry.file_name().into_string().map_err(PackfileError::InvalidString)?).parse::<u32>();
             if let Ok(file_num) = file_num {
-                let mut file = File::open(entry.path())?;
+                let mut file = File::open(entry.path()).await?;
                 let mut buf: Vec<u8> = Default::default();
-                file.read_to_end(&mut buf)?;
+                file.read_to_end(&mut buf).await?;
 
                 let key = self.keys.derive_symmetric_key(KEY_DERIVATION_CONSTANT);
                 let cipher = Aes256Gcm::new(&key.into());
@@ -175,7 +171,7 @@ impl BlobIndex {
         Ok(())
     }
 
-    pub fn flush(&mut self) -> Result<(), PackfileError> {
+    pub async fn flush(&mut self) -> Result<(), PackfileError> {
         let mut buf = bincode::options().with_varint_encoding()
             .serialize(&self.items_buf)?;
         let new_file_num = self.last_file_num.checked_add(1)
@@ -191,8 +187,8 @@ impl BlobIndex {
         cipher.encrypt_in_place(nonce, b"", &mut buf)?;
 
         let file_path = format!("{}/{:0>10}", self.output_path, new_file_num);
-        let mut file = File::create(file_path.clone())?;
-        file.write_all(&buf)?;
+        let mut file = File::create(file_path.clone()).await?;
+        file.write_all(&buf).await?;
 
         self.last_file_num = new_file_num;
         self.items_buf.clear();

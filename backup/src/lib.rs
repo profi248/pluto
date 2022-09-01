@@ -1,4 +1,4 @@
 #[macro_use]
 extern crate tracing;
 
-mod pack;
+pub mod pack;

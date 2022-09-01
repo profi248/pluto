@@ -1,5 +1,5 @@
-mod packfile_handler;
-mod blob_index;
+pub mod packfile_handler;
+pub mod blob_index;
 
 use std::ffi::OsString;
 use serde::{ Serialize, Deserialize };
@@ -24,7 +24,7 @@ struct PackfileBlob {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub(crate) struct Blob {
+pub struct Blob {
     pub hash: BlobHash,
     pub kind: BlobKind,
     pub data: Vec<u8>

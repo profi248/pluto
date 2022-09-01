@@ -1,9 +1,5 @@
-#[cfg(test)]
-#[path = "packfile_handler_tests.rs"]
-mod packfile_handler_tests;
-
-use std::fs::{ self, File, OpenOptions };
-use std::io::{ Read, Seek, Write };
+use tokio::fs::{ self, File, OpenOptions };
+use tokio::io::{ AsyncReadExt, AsyncSeekExt, AsyncWriteExt };
 use std::collections::VecDeque;
 
 use zstd::bulk::{ Compressor, Decompressor };
@@ -15,13 +11,13 @@ use crate::pack::{ Blob, PackfileError, PackfileBlob, CompressionKind, BlobHash,
 use crate::pack::blob_index::BlobIndex;
 
 /// Maximum size of blob data that's allowed in a packfile.
-const BLOB_MAX_UNCOMPRESSED_SIZE: usize = 3 * 1024 * 1024; // 3 MiB
+pub const BLOB_MAX_UNCOMPRESSED_SIZE: usize = 3 * 1024 * 1024; // 3 MiB
 /// Total blob size, after which it's attempted to write the packfile to disk.
-const PACKFILE_TARGET_SIZE: usize = 2 * 1024 * 1024; // 2 MiB
+pub const PACKFILE_TARGET_SIZE: usize = 2 * 1024 * 1024; // 2 MiB
 /// Maximum possible size of a packfile.
-const PACKFILE_MAX_SIZE: usize = 12 * 1024 * 1024; // 12 MiB
+pub const PACKFILE_MAX_SIZE: usize = 12 * 1024 * 1024; // 12 MiB
 /// Maximum number of blobs that can be stored in a packfile.
-const PACKFILE_MAX_BLOBS: usize = 100_000;
+pub const PACKFILE_MAX_BLOBS: usize = 100_000;
 
 const ZSTD_COMPRESSION_LEVEL: i32 = 5;
 
@@ -63,7 +59,7 @@ const INDEX_FOLDER: &str = "index";
 /// encrypted data. All encryption/authentication is done using AES-256-GCM. Header length is
 /// currently not encrypted, so it's possible to estimate the number of blobs stored in a file,
 /// but I don't think it's a big problem now.
-pub(crate) struct PackfileHandler {
+pub struct PackfileHandler {
     /// The path to the output folder.
     output_path: String,
     /// Keys used to derive encryption keys.
@@ -77,14 +73,14 @@ pub(crate) struct PackfileHandler {
 }
 
 impl PackfileHandler {
-    pub fn new(output_path: String, keys: Keys) -> Result<Self, PackfileError> {
+    pub async fn new(output_path: String, keys: Keys) -> Result<Self, PackfileError> {
         let packfile_path = format!("{}/{}", output_path, PACKFILE_FOLDER);
         let index_path = format!("{}/{}", output_path, INDEX_FOLDER);
 
         Ok(Self {
             output_path: packfile_path,
             keys: keys.clone(),
-            index: BlobIndex::new(index_path, keys)?,
+            index: BlobIndex::new(index_path, keys).await?,
             blobs: VecDeque::new(),
             dirty: false
         })
@@ -99,16 +95,16 @@ impl PackfileHandler {
     }
 
     pub async fn get_blob(&mut self, blob_hash: BlobHash) -> Result<Option<Blob>, PackfileError> {
-        if let Some(packfile_id) = self.index.find_packfile(&blob_hash)? {
-            let path = self.get_packfile_path(packfile_id, false)?;
-            let mut packfile = File::open(path)?;
-            let packfile_size = packfile.metadata()?.len();
+        if let Some(packfile_id) = self.index.find_packfile(&blob_hash).await? {
+            let path = self.get_packfile_path(packfile_id, false).await?;
+            let mut packfile = File::open(path).await?;
+            let packfile_size = packfile.metadata().await?.len();
             if packfile_size > PACKFILE_MAX_SIZE as u64 {
                 return Err(PackfileError::PackfileTooLarge)
             }
 
             let mut header_size_bytes: [u8; core::mem::size_of::<u64>()] = Default::default();
-            packfile.read_exact(&mut header_size_bytes)?;
+            packfile.read_exact(&mut header_size_bytes).await?;
             let header_size = u64::from_le_bytes(header_size_bytes);
 
             if header_size > packfile_size || header_size == 0 {
@@ -116,7 +112,7 @@ impl PackfileHandler {
             }
 
             let mut header_buf = vec![0; header_size as usize];
-            packfile.read_exact(&mut header_buf)?;
+            packfile.read_exact(&mut header_buf).await?;
 
             let key = self.keys.derive_symmetric_key(KEY_DERIVATION_CONSTANT_HEADER);
             let cipher = Aes256Gcm::new(&key.into());
@@ -129,10 +125,10 @@ impl PackfileHandler {
                 if blob_metadata.hash == blob_hash {
                     let mut blob_nonce = [0; NONCE_SIZE];
                     let mut blob_buf = vec![0; blob_metadata.length as usize];
-                    packfile.seek(std::io::SeekFrom::Current(blob_metadata.offset as i64))?;
+                    packfile.seek(std::io::SeekFrom::Current(blob_metadata.offset as i64)).await?;
 
-                    packfile.read_exact(&mut blob_nonce)?;
-                    packfile.read_exact(&mut blob_buf)?;
+                    packfile.read_exact(&mut blob_nonce).await?;
+                    packfile.read_exact(&mut blob_buf).await?;
 
                     let key = self.keys.derive_symmetric_key(&blob_metadata.hash);
                     let cipher = Aes256Gcm::new(&key.into());
@@ -159,7 +155,7 @@ impl PackfileHandler {
 
     pub async fn flush(&mut self) -> Result<(), PackfileError> {
         self.write_packfiles().await?;
-        self.index.flush()?;
+        self.index.flush().await?;
         self.dirty = false;
 
         Ok(())
@@ -169,7 +165,7 @@ impl PackfileHandler {
         let mut candidates_size: usize = 0;
         let mut candidates_cnt: usize = 0;
         for blob in &self.blobs {
-            if !self.index.is_blob_duplicate(&blob.hash)? {
+            if !self.index.is_blob_duplicate(&blob.hash).await? {
                 candidates_size += blob.data.len();
                 candidates_cnt += 1;
             }
@@ -198,7 +194,7 @@ impl PackfileHandler {
             while let Some(blob) = &self.blobs.pop_front() {
                 // Deduplication - if the blob is already saved in this or other existing
                 // packfiles, skip it.
-                if self.index.is_blob_duplicate(&blob.hash)? { continue; }
+                if self.index.is_blob_duplicate(&blob.hash).await? { continue; }
 
                 // Derive a new key for each for each blob based on the (unencrypted) hash,
                 // to ensure that we have a unique nonce/key combo.
@@ -265,24 +261,24 @@ impl PackfileHandler {
             assert!(buffer.len() <= PACKFILE_MAX_SIZE,
                     "bug: violated packfile size limit ({} B)", buffer.len());
 
-            let file_path = self.get_packfile_path(packfile_id, true)?;
+            let file_path = self.get_packfile_path(packfile_id, true).await?;
 
             // Ensure that we are not overwriting an existing packfile by chance.
             let mut file = OpenOptions::new()
                 .write(true)
                 .create_new(true)
-                .open(file_path)?;
+                .open(file_path).await?;
 
-            file.write_all(&buffer)?;
+            file.write_all(&buffer).await?;
 
-            self.index.finalize_packfile(&mut packfile_index, packfile_id)?;
+            self.index.finalize_packfile(&mut packfile_index, packfile_id).await?;
             debug!("wrote packfile {} of size {}", hex::encode(packfile_id), buffer.len());
         }
 
         Ok(())
     }
 
-    fn get_packfile_path(&mut self, packfile_hash: PackfileId, create_folders: bool) -> Result<String, PackfileError> {
+    async fn get_packfile_path(&mut self, packfile_hash: PackfileId, create_folders: bool) -> Result<String, PackfileError> {
         let packfile_hash_hex = hex::encode(packfile_hash);
 
         // Split packfiles into directories based on the first two hex characters of the hash,
@@ -290,7 +286,7 @@ impl PackfileHandler {
         let directory = format!("{}/{}", self.output_path, &packfile_hash_hex[..2]);
         let file_path = format!("{}/{}", directory, packfile_hash_hex);
 
-        if create_folders { fs::create_dir_all(directory)? };
+        if create_folders { fs::create_dir_all(directory).await? };
 
         Ok(file_path)
     }
@@ -301,5 +297,30 @@ impl Drop for PackfileHandler {
         if self.dirty {
             panic!("Packer was dropped while dirty, without calling flush()");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::pack::BlobKind;
+    use super::*;
+
+    #[test]
+    fn validate_size_constraints() {
+        let entry = PackfileBlob {
+            hash: [0; 32],
+            kind: BlobKind::FileChunk,
+            compression: CompressionKind::Zstd,
+            offset: 0,
+            length: 0
+        };
+
+        let entry_len = bincode::options().with_varint_encoding()
+            .serialize(&entry).unwrap().len();
+
+        // worst case scenario with maximum amount of blobs, target size reached and
+        // a maximum size blob added over the target size
+        assert!(PACKFILE_TARGET_SIZE + BLOB_MAX_UNCOMPRESSED_SIZE + (entry_len * PACKFILE_MAX_BLOBS) + NONCE_SIZE
+            <= PACKFILE_MAX_SIZE);
     }
 }

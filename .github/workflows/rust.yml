@@ -67,6 +67,8 @@ jobs:
       run: cargo build --release --verbose --workspace --exclude pluto-coordinator
     - name: Run tests
       run: cargo test --verbose --workspace --exclude pluto-coordinator
+    - name: Run loom tests
+      run: LOOM_MAX_PREEMPTIONS=5 RUSTFLAGS='--cfg loom' cargo test -p pluto-utils --release
     - uses: actions/upload-artifact@v3
       with:
         name: windows-node
@@ -88,6 +90,8 @@ jobs:
         run: cargo build --release --verbose --workspace --exclude pluto-coordinator
       - name: Run tests
         run: cargo test --verbose --workspace --exclude pluto-coordinator
+      - name: Run loom tests
+        run: LOOM_MAX_PREEMPTIONS=5 RUSTFLAGS='--cfg loom' cargo test -p pluto-utils --release
       - uses: actions/upload-artifact@v3
         with:
           name: macos-node

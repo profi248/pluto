@@ -1,17 +1,22 @@
 use rand::{ Rng, RngCore, SeedableRng };
 use rand_chacha::ChaCha8Rng;
 use sha2::{ Sha256, Digest };
+use tokio::fs;
+use tokio_stream::{ StreamExt, wrappers::ReadDirStream };
 
-use crate::pack::BlobKind;
-use super::*;
+use pluto_backup::pack::{
+    packfile_handler::{PackfileHandler, BLOB_MAX_UNCOMPRESSED_SIZE },
+    BlobKind, Blob, CompressionKind,
+};
+use pluto_network::key::Keys;
 
 #[tokio::test]
 async fn test_packer() {
     let dir = format!("{}/pack", std::env::temp_dir().to_str().unwrap());
-    fs::remove_dir_all(dir.clone()).ok();
+    fs::remove_dir_all(dir.clone()).await.ok();
 
     let keys = Keys::from_entropy([0; 32]);
-    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).unwrap();
+    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).await.unwrap();
 
     let blob1 = Blob {
         hash: [0; 32],
@@ -30,21 +35,21 @@ async fn test_packer() {
 
     packer.flush().await.expect("Failed to finish");
 
-    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).unwrap();
+    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).await.unwrap();
     assert_eq!(blob1, packer.get_blob(blob1.hash).await.unwrap().unwrap());
     assert_eq!(blob2, packer.get_blob(blob2.hash).await.unwrap().unwrap());
     assert_eq!(None, packer.get_blob([2; 32]).await.unwrap());
 
-    fs::remove_dir_all(dir.clone()).ok();
+    fs::remove_dir_all(dir.clone()).await.ok();
 }
 
 #[tokio::test]
 async fn test_packer_deduplication() {
     let dir = format!("{}/pack2", std::env::temp_dir().to_str().unwrap());
-    fs::remove_dir_all(dir.clone()).ok();
+    fs::remove_dir_all(dir.clone()).await.ok();
 
     let keys = Keys::from_entropy([0; 32]);
-    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).unwrap();
+    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).await.unwrap();
     let mut rng = ChaCha8Rng::seed_from_u64(0);
 
     let mut data: Vec<u8> = vec![0; 1_000_000];
@@ -56,46 +61,50 @@ async fn test_packer_deduplication() {
         data
     };
 
-    for i in 1..1000 {
+    for _ in 1..1000 {
         packer.add_blob(blob.clone()).await.expect("Failed to add blob");
     }
 
     packer.flush().await.expect("Failed to finish");
 
     let mut total_size = 0;
-    for item in fs::read_dir(dir.clone()).unwrap() {
-        total_size += item.unwrap().metadata().unwrap().len();
+
+    let mut iter = ReadDirStream::new(fs::read_dir(dir.clone()).await.unwrap());
+    while let Some(item) = iter.next().await {
+        total_size += item.unwrap().metadata().await.unwrap().len();
     }
 
     assert!(total_size < 5_000_000);
 
-    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).unwrap();
+    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).await.unwrap();
 
-    for i in 1..1000 {
+    for _ in 1..1000 {
         packer.add_blob(blob.clone()).await.expect("Failed to add blob");
     }
 
     let mut total_size = 0;
-    for item in fs::read_dir(dir.clone()).unwrap() {
-        total_size += item.unwrap().metadata().unwrap().len();
+
+    let mut iter = ReadDirStream::new(fs::read_dir(dir.clone()).await.unwrap());
+    while let Some(item) = iter.next().await {
+        total_size += item.unwrap().metadata().await.unwrap().len();
     }
 
     packer.flush().await.expect("Failed to finish");
     assert!(total_size < 5_000_000);
 
-    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).unwrap();
+    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).await.unwrap();
     assert_eq!(blob, packer.get_blob(blob.clone().hash).await.unwrap().unwrap());
 
-    fs::remove_dir_all(dir.clone()).ok();
+    fs::remove_dir_all(dir.clone()).await.ok();
 }
 
 #[tokio::test]
 async fn test_packer_rand() {
     let dir = format!("{}/pack3", std::env::temp_dir().to_str().unwrap());
-    fs::remove_dir_all(dir.clone()).ok();
+    fs::remove_dir_all(dir.clone()).await.ok();
 
     let keys = Keys::from_entropy([0; 32]);
-    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).unwrap();
+    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).await.unwrap();
     let mut rng = ChaCha8Rng::seed_from_u64(0);
     let mut blobs = vec![];
 
@@ -116,7 +125,7 @@ async fn test_packer_rand() {
     }
 
     packer.flush().await.unwrap();
-    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).unwrap();
+    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).await.unwrap();
 
     for blob in &blobs {
         assert_eq!(*blob, packer.get_blob(blob.hash).await.unwrap().unwrap());
@@ -139,30 +148,11 @@ async fn test_packer_rand() {
     }
 
     packer.flush().await.unwrap();
-    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).unwrap();
+    let mut packer = PackfileHandler::new(dir.clone(), keys.clone()).await.unwrap();
 
     for blob in &blobs {
         assert_eq!(*blob, packer.get_blob(blob.hash).await.unwrap().unwrap());
     }
 
-    fs::remove_dir_all(dir.clone()).ok();
-}
-
-#[test]
-fn validate_size_constraints() {
-    let entry = PackfileBlob {
-        hash: [0; 32],
-        kind: BlobKind::FileChunk,
-        compression: CompressionKind::Zstd,
-        offset: 0,
-        length: 0
-    };
-
-    let entry_len = bincode::options().with_varint_encoding()
-        .serialize(&entry).unwrap().len();
-
-    // worst case scenario with maximum amount of blobs, target size reached and
-    // a maximum size blob added over the target size
-    assert!(PACKFILE_TARGET_SIZE + BLOB_MAX_UNCOMPRESSED_SIZE + (entry_len * PACKFILE_MAX_BLOBS) + NONCE_SIZE
-        <= PACKFILE_MAX_SIZE);
+    fs::remove_dir_all(dir.clone()).await.ok();
 }
