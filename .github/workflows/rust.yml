@@ -68,7 +68,7 @@ jobs:
     - name: Run tests
       run: cargo test --verbose --workspace --exclude pluto-coordinator
     - name: Run loom tests
-      run: set LOOM_MAX_PREEMPTIONS=5 & set RUSTFLAGS="--cfg loom" & cargo test -p pluto-utils --release
+      run: $env:LOOM_MAX_PREEMPTIONS=5; $env:RUSTFLAGS="--cfg loom"; cargo test -p pluto-utils --release
     - uses: actions/upload-artifact@v3
       with:
         name: windows-node
