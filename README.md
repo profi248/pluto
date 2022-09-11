@@ -4,6 +4,8 @@
 
 **NOTE:** this is mostly a wishlist and doesn't reflect the actual state of implementation!
 
+Work in progress documentation: <https://profi248.github.io/pluto> (contains build & run instructions).
+
 pluto lets you back up any amount of your data for free to other people's computers, in exchange for an equal amount of your disk space. You can save your data to random users, your friends, or choose to make multiple copies and split them however you want. In any case, your data will of course be encrypted with a key only you have. Don't procrastinate your backups, it's as simple as installing the app and picking what the data you want safeguarded! The only thing you need is some free disk space.
 
 
