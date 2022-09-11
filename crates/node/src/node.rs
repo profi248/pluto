@@ -18,7 +18,7 @@ lazy_static! {
 use pluto_network::prelude::*;
 
 use pluto_network::{
-    Result, client::Client
+    Result, Client
 };
 
 pub struct Node {

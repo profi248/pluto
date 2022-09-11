@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use pluto_network::client::Client;
+use pluto_network::Client;
 use pluto_network::key::Keys;
 use pluto_network::rumqttc::{ ClientError, QoS };
 

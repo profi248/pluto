@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use warp::{ reply, http::StatusCode };
 use serde::Serialize;
 
-use pluto_network::client::Client;
+use pluto_network::Client;
 use pluto_node::db::Database;
 
 #[derive(Serialize)]

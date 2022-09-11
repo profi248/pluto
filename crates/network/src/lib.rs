@@ -7,7 +7,7 @@ pub use x25519_dalek;
 
 pub mod handler;
 pub mod topics;
-pub mod client;
+mod client; pub use client::Client;
 pub mod key;
 pub mod message;
 pub mod utils;
@@ -39,6 +39,8 @@ pub mod prelude {
     pub use crate::error::*;
     pub use crate::handler::*;
     pub use crate::message::*;
+
+    pub use crate::Client;
 
     pub use rumqttc;
     pub use x25519_dalek;

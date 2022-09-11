@@ -3,7 +3,7 @@ use rumqttc::{ AsyncClient, MqttOptions, EventLoop, QoS };
 use std::time::Duration;
 use std::sync::Arc;
 
-use pluto_network::client::Client;
+use pluto_network::Client;
 use pluto_network::prelude::*;
 
 pub const MQTT_CLIENT_ID: &'static str = "coordinator";

@@ -2,7 +2,7 @@ use warp::{ reply, http::StatusCode, reply::Json };
 use serde::{ Deserialize };
 use serde_json::json;
 
-use pluto_network::client::Client;
+use pluto_network::Client;
 use pluto_network::key::{ self, Keys, Mnemonic, Seed };
 use pluto_node::db::Database;
 use pluto_node::utils::subscribe_to_topics;

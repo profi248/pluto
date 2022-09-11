@@ -1,4 +1,4 @@
-use pluto_network::{ prelude::*, topics::*, client::Client, utils::* };
+use pluto_network::{ prelude::*, topics::*, Client, utils::* };
 
 use pluto_network::protos::shared::{ ErrorResponse, error_response::ErrorType };
 use pluto_network::protos::auth::{

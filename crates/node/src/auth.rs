@@ -1,5 +1,5 @@
 use std::time::Duration;
-use pluto_network::{ client::Client, prelude::*, topics::* };
+use pluto_network::{ prelude::*, topics::* };
 use pluto_network::key::{ Keys, Mnemonic, Seed };
 use pluto_network::rumqttc::QoS;
 use pluto_network::protos::shared::error_response::ErrorType;

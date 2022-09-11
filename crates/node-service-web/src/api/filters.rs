@@ -1,6 +1,6 @@
 use warp::Filter;
 
-use pluto_network::client::Client;
+use pluto_network::Client;
 
 use crate::api::routes;
 use crate::KeysShared;

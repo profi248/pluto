@@ -4,7 +4,7 @@ use warp::{ reply, http::StatusCode, reply::Json };
 use serde_json::json;
 use serde::{ Serialize, Deserialize };
 
-use pluto_network::client::Client;
+use pluto_network::Client;
 use pluto_network::key::{ self, Keys, Mnemonic, Seed };
 use pluto_macros::reject;
 use pluto_node::backup_job::*;

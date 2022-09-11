@@ -4,7 +4,7 @@ mod routes;
 use rust_embed::RustEmbed;
 use warp::{ http::header::HeaderValue, path::Tail, reply::Response, Filter, Rejection, Reply };
 
-use pluto_network::client::Client;
+use pluto_network::Client;
 use crate::KeysShared;
 
 #[derive(RustEmbed)]
