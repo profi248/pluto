@@ -1,0 +1,6 @@
+[book]
+authors = ["~Nebula~"]
+language = "en"
+multilingual = false
+src = "src"
+title = "pluto specification"
