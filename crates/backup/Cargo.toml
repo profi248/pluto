@@ -12,7 +12,7 @@ pluto-network = { path = "../network" }
 zstd = { version = "0.11", features = ["experimental"] }
 
 # Async
-tokio = { version = "1.19.2", features = ["sync", "fs", "io-util"] }
+tokio = { version = "1.20.3", features = ["sync", "fs", "io-util"] }
 tokio-stream = { version = "0.1.9", features = ["fs"] }
 
 # Cryptography

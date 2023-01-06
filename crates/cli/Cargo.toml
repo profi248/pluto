@@ -10,7 +10,7 @@ pluto-network = { path = "../network" }
 pluto-node = { path = "../node" }
 
 # Async
-tokio = { version = "1.18.2", features = ["rt-multi-thread", "macros", "sync", "signal"] }
+tokio = { version = "1.20.3", features = ["rt-multi-thread", "macros", "sync", "signal"] }
 
 # CLI
 inquire = "0.3.0"
