@@ -17,7 +17,7 @@ diesel_migrations = "1.4.0"
 getrandom = "0.2.6"
 
 # Async
-tokio = { version = "1.18.2", features = ["rt-multi-thread", "macros", "sync", "signal"] }
+tokio = { version = "1.20.4", features = ["rt-multi-thread", "macros", "sync", "signal"] }
 
 # Logging
 tracing = "0.1.34"
